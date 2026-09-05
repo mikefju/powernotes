@@ -1099,12 +1099,17 @@ function rangeText(st,en){
 }
 /* ---- moving blocks ---- */
 function blockEnd(i){ return collapsible(i)?Math.max(i+1,sectionEnd(i)):i+1; }
+/* where a block starting at b0 lands when it moves up: over the whole sibling block above it, not into it */
+function upTarget(b0){
+  if(b0===0) return -1;
+  let k=b0-1;
+  for(let j=b0-1;j>=0;j--){ if(!collapsible(j)) continue; const e=sectionEnd(j); if(e===b0) k=j; else if(e>b0) break; }
+  return k;
+}
 function moveBlock(s,dir){
   const b0=s.start.i, b1=Math.max(blockEnd(s.end.i),s.end.i+1); let ins;
   if(dir<0){
-    if(b0===0) return; let k=b0-1;
-    for(let j=b0-1;j>=0;j--){ if(!collapsible(j)) continue; const e=sectionEnd(j); if(e===b0) k=j; else if(e>b0) break; }
-    ins=k;
+    ins=upTarget(b0); if(ins<0) return;
   } else { if(b1>=lines.length) return; ins=blockEnd(b1)-(b1-b0); }
   pushHistory(); const block=lines.splice(b0,b1-b0); lines.splice(ins,0,...block);
   const d=ins-b0; commit(); setSel({i:s.a.i+d,off:s.a.off},{i:s.f.i+d,off:s.f.off});
@@ -1143,15 +1148,34 @@ function sortSection(s,mode){
   lines.splice(from,to-from,...out); commit();
   setSel({i:caret==null?i:caret,off:s.f.off});
 }
-function moveBlockTo(srcRow,tgt,after){
-  const b0=srcRow, b1=blockEnd(srcRow); let ins=after?blockEnd(tgt):tgt;
+/* Dragging offers exactly the places Alt+Up / Alt+Down can put the block and no others, so a row
+   never lands between a parent and its own children unless it already belongs there. */
+function dragGaps(src){
+  const b0=src, b1=blockEnd(src), gaps=new Set();
+  /* down: hop over one whole block at a time. The rows past the block keep their indices and their
+     sections, so every landing place can be read straight off the note as it stands. */
+  for(let g=b1;g<lines.length;){ const e=blockEnd(g); if(e<=g) break; gaps.add(e); g=e; }
+  /* up: each hop changes what sits above the block, so walk it on a copy of the note */
+  const keepLines=lines, keepFenced=fenced;
+  try{
+    lines=lines.slice(); computeFences();
+    for(let at=b0;at>0;){
+      const g=upTarget(at); if(g<0||g>=at) break;
+      gaps.add(g);
+      lines.splice(g,0,...lines.splice(at,b1-b0)); computeFences(); at=g;
+    }
+  } finally { lines=keepLines; fenced=keepFenced; }
+  return gaps;
+}
+function moveBlockTo(srcRow,ins){
+  const b0=srcRow, b1=blockEnd(srcRow);
   if(ins>=b0&&ins<=b1) return;
   pushHistory(); const block=lines.splice(b0,b1-b0); if(ins>b1) ins-=(b1-b0); lines.splice(ins,0,...block);
   commit(); setSel({i:ins,off:0});
 }
 
 /* ---------- editor events ---------- */
-let refocus=false, dragSrc=-1, dropRow=null;
+let refocus=false, dragSrc=-1, dropRow=null, dropIns=-1, dropOk=null;
 editor.addEventListener('mousedown',e=>{
   acHide();
   const a=e.target.closest('a');
@@ -1199,23 +1223,29 @@ editor.addEventListener('contextmenu',e=>{
 /* drag and drop of rows */
 editor.addEventListener('dragstart',e=>{
   const h=e.target.closest&&e.target.closest('.handle'); if(!h){ if(e.target.closest&&e.target.closest('.content')) return; e.preventDefault(); return; }
-  dragSrc=+h.closest('.row').dataset.i; e.dataTransfer.setData('text/plain','⠿'); e.dataTransfer.effectAllowed='move'; h.closest('.row').classList.add('dragging');
+  dragSrc=+h.closest('.row').dataset.i; dropOk=dragGaps(dragSrc); e.dataTransfer.setData('text/plain','⠿'); e.dataTransfer.effectAllowed='move'; h.closest('.row').classList.add('dragging');
 });
-function clearDrop(){ if(dropRow){ dropRow.classList.remove('drop-before','drop-after'); dropRow=null; } }
+function clearDrop(){ if(dropRow){ dropRow.classList.remove('drop-before','drop-after'); dropRow=null; } dropIns=-1; }
+/* the gap under a row and the gap over the next visible one are one place, so both draw the same line and drop alike */
 editor.addEventListener('dragover',e=>{
   if(dragSrc<0) return; e.preventDefault(); e.dataTransfer.dropEffect='move';
   const row=e.target.closest&&e.target.closest('.row'); clearDrop(); if(!row) return;
-  const r=row.getBoundingClientRect(); const after=e.clientY>r.top+r.height/2;
-  row.classList.add(after?'drop-after':'drop-before'); dropRow=row;
+  const i=+row.dataset.i, r=row.getBoundingClientRect();
+  let ins=i;
+  if(e.clientY>r.top+r.height/2){ ins=lines.length; for(let j=i+1;j<lines.length;j++) if(!hiddenArr[j]){ ins=j; break; } }
+  if(!dropOk||!dropOk.has(ins)){ e.dataTransfer.dropEffect='none'; return; }
+  if(ins<lines.length){ dropRow=editor.children[ins]; dropRow.classList.add('drop-before'); }
+  else { dropRow=row; dropRow.classList.add('drop-after'); }
+  dropIns=ins;
 });
 editor.addEventListener('dragleave',e=>{ if(!editor.contains(e.relatedTarget)) clearDrop(); });
 editor.addEventListener('drop',e=>{
   if(dragSrc<0) return; e.preventDefault();
-  const row=e.target.closest&&e.target.closest('.row'); const after=dropRow&&dropRow.classList.contains('drop-after'); clearDrop();
+  const ins=dropIns; clearDrop(); dropOk=null;
   const src=dragSrc; dragSrc=-1; editor.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));
-  if(row) moveBlockTo(src,+row.dataset.i,after);
+  if(ins>=0) moveBlockTo(src,ins);
 });
-editor.addEventListener('dragend',()=>{ dragSrc=-1; clearDrop(); editor.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging')); });
+editor.addEventListener('dragend',()=>{ dragSrc=-1; dropOk=null; clearDrop(); editor.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging')); });
 
 editor.addEventListener('beforeinput',e=>{
   const t=e.inputType;
