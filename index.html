@@ -1,0 +1,2551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PowerNotes</title>
+<meta name="theme-color" content="#f0f0ed" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1f2329" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Outline-style Markdown notes with tasks, tags, and an agenda. Works offline.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PowerNotes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#fafaf8; --panel:#f0f0ed; --text:#2b3038; --muted:#7c8391; --line:#dcdee3; --hover:#e4e6e9; --well:#e9ebee;
+  --accent:#4b7cd6; --danger:#cf5a52; --warn:#b98a2c;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
+  --zoom:1; --u:calc(1rem*var(--zoom)); --indent:calc(1.5*var(--u)); --ow:15rem;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){color-scheme:dark;--bg:#171a1e;--panel:#1f2329;--text:#d9dde3;--muted:#8d95a1;--line:#323840;--hover:#2c323a;--well:#2a3037;--accent:#86aaea;--danger:#e2807a;--warn:#d0a44c}
+}
+:root[data-theme=dark]{color-scheme:dark;--bg:#171a1e;--panel:#1f2329;--text:#d9dde3;--muted:#8d95a1;--line:#323840;--hover:#2c323a;--well:#2a3037;--accent:#86aaea;--danger:#e2807a;--warn:#d0a44c}
+:root[data-font=serif]{--font:Georgia,"Times New Roman",serif}
+:root[data-font=mono]{--font:var(--mono)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 var(--font);-webkit-font-smoothing:antialiased}
+/* the header and the outline sit a shade off the page, so the edit pane reads as the paper */
+header{position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar{padding:4px 8px;display:flex;align-items:center;gap:2px;min-height:34px}
+/* menus and tabs share one row; the tabs sit on the header's bottom edge so the active one runs into the page */
+.menurow{padding:4px 8px 0 4px;min-height:34px;align-items:flex-end;gap:8px}
+.menuwrap{flex:none;display:flex;align-items:center;align-self:stretch}
+/* with the outline open the tabs start where the page does */
+body:has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--ow) - 11px)}
+.brand{color:var(--muted);font-size:12.5px;padding:0 10px;letter-spacing:.02em;user-select:none;align-self:center}
+.menubar{display:flex;flex:none;position:relative}
+.mbtn{border:0;background:transparent;color:var(--text);font:inherit;font-size:13.5px;line-height:1.4;padding:4px 10px;border-radius:6px;cursor:default}
+.mbtn u{text-decoration:none}
+body.altnav .mbtn u{text-decoration:underline}
+.mbtn:hover,.mbtn.open{background:var(--hover)}
+.menu{position:absolute;top:100%;left:0;margin-top:2px;min-width:20rem;max-height:calc(100vh - 90px);overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;z-index:5;font-size:14px}
+.menu .mi{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:default;color:var(--text)}
+.menu .mi:hover,.menu .mi.focus{background:var(--hover)}
+.menu .mi.disabled{color:var(--muted);pointer-events:none}
+.menu .mi .chk{width:1em;flex:none;text-align:center}
+.menu .mi .lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu .mi .sc{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.menu .mh{padding:6px 10px 2px;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
+/* submenus and the right-click menu float where they are opened */
+.menu.sub,.menu.ctx{position:fixed;margin:0;max-height:calc(100vh - 16px)}
+.menu .mi.open{background:var(--hover)}
+.menu .mi.has-sub .sc{font-size:16px;line-height:1}
+/* access keys show while Alt is held or when the menu was opened from the keyboard */
+.menu u{text-decoration:none}
+body.altnav .menu u,.menu.kb u{text-decoration:underline;text-underline-offset:2px}
+.tabs{flex:1;min-width:0;display:flex;align-items:flex-end;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;max-width:220px;padding:5px 6px 5px 12px;border-radius:8px 8px 0 0;color:var(--muted);white-space:nowrap;border:1px solid transparent;border-bottom:0;background:transparent;font:inherit;font-size:13.5px;line-height:1.4;cursor:default}
+.tab:hover{background:var(--hover)}
+.tab.active{color:var(--text);font-weight:600;background:var(--bg);border-color:var(--line)}
+.tadd{margin-bottom:2px}
+.tab .tname{overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* the name is always measured at the active tab's weight, so selecting a tab does not change its width */
+.tab .tname::after{content:attr(data-n);display:block;height:0;overflow:hidden;visibility:hidden;font-weight:600}
+.tab input.rename{font:inherit;border:0;background:transparent;color:inherit;outline:none;width:14ch;padding:0}
+/* the dot sits in the same box as the close button it stands in for, so a tab keeps its width when it goes dirty */
+.tab .tdot{flex:none;width:18px;height:18px;display:none;place-items:center}
+.tab .tdot::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.tab .tclose{flex:none;width:18px;height:18px;border-radius:4px;display:grid;place-items:center;font-size:15px;line-height:1;opacity:0;color:var(--muted)}
+.tab:hover .tclose,.tab.active .tclose{opacity:1}
+.tab .tclose:hover{background:var(--line);color:var(--text)}
+.tab.dirty:not(:hover) .tclose{display:none}
+.tab.dirty:not(:hover) .tdot{display:grid}
+.btn{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;line-height:1.4;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--hover);color:var(--text)}
+.btn[aria-pressed=true]{background:var(--well);color:var(--text)}
+.btn.icon{padding:5px 8px;min-width:30px;text-align:center}
+.tadd{padding:3px 9px;font-size:16px}
+.spacer{flex:1}
+/* find and filter bars sit above the menus: one row of labelled groups, fields in the page colour, toggles lit when on */
+.tool{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:13px}
+.grp{display:inline-flex;align-items:center;gap:6px}
+.fl{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;user-select:none}
+.fin{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--well);color:var(--text);border-radius:6px;padding:4px 8px;outline:none;min-width:0;width:14rem}
+.fin:focus{border-color:var(--accent)}
+.tool .fin{font-size:13px;line-height:1.4;background:var(--bg)}
+.tool .btn{padding:4px 9px;font-size:13px}
+.tool .btn.icon{padding:4px 7px;min-width:26px}
+.tool .btn[aria-pressed=true]{background:var(--bg);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.fcount{color:var(--muted);font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:7px;padding:2px}
+.seg .btn{padding:2px 8px;border-radius:4px}
+.tool .seg .btn[aria-pressed=true]{box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.fsel{font:inherit;font-size:13px;line-height:1.4;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:6px;padding:3px 6px;outline:none}
+.fsel:focus{border-color:var(--accent)}
+.ftags{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center}
+.ftags .btn{padding:2px 9px;border-radius:1em}
+.ftags .none{color:var(--muted);font-style:italic}
+.pop{position:absolute;z-index:6;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:8px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.pop input[type=date]{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--well);color:var(--text);border-radius:6px;padding:4px 8px;outline:none}
+.pop input[type=date]:focus{border-color:var(--accent)}
+.pop .quick{display:flex;gap:2px}
+.pop .quick .btn{padding:3px 8px;font-size:13px}
+
+.app{display:flex;align-items:flex-start}
+.outline{position:sticky;top:var(--hdr,72px);flex:none;width:var(--ow);height:calc(100vh - var(--hdr,72px));overflow:auto;padding:20px 8px 20px 16px;font-size:13px;background:var(--panel);border-right:1px solid var(--line)}
+.outline .oh{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px}
+.outline .oi{display:block;padding:3px 8px;border-radius:6px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:calc(8px + var(--d,0)*12px)}
+.outline .oi:hover{background:var(--hover);color:var(--text)}
+.outline .oi.cur{color:var(--text);background:var(--well)}
+.outline .oe{color:var(--muted);padding:0 8px;font-style:italic}
+main{flex:1;min-width:0;padding:20px 32px 50vh 12px;min-height:100vh;font-size:var(--u)}
+body.drag main{outline:2px dashed var(--muted);outline-offset:-12px;border-radius:12px}
+#editor{outline:none}
+/* the tab's name heads the page, lined up with the headings below it */
+.doctitle{margin:0 0 .8em calc(2.3*var(--u));padding:0 0 .3em;font-size:1.5em;font-weight:650;line-height:1.2;border-bottom:1px solid var(--line);color:var(--text);overflow-wrap:anywhere;user-select:none;cursor:default}
+.backlinks{margin-top:3em;padding-top:1em;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
+.backlinks a{color:var(--accent);text-decoration:none;cursor:pointer;margin-right:.8em}
+.backlinks a:hover{text-decoration:underline}
+
+.row{display:grid;grid-template-columns:calc(2.3*var(--u)) auto minmax(0,1fr);align-items:start;padding-left:calc((var(--lvl,0) + var(--hd,0))*var(--indent));min-height:1lh;scroll-margin-top:calc(var(--hdr,72px) + 32px);position:relative}
+.row.hidden{display:none}
+.row.dim{opacity:.35}
+.row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+.row.dragging{opacity:.4}
+/* icons pack against the text from the right, so the chevron or checkbox is always next to the words */
+.gutter{grid-column:1;grid-row:1;display:flex;justify-content:flex-end;align-items:center;height:1lh;user-select:none;padding-right:.2em;position:relative}
+/* marker, collapsed count and progress are pseudo-elements so they add no caret stops */
+.row::before{content:attr(data-m);grid-column:2;grid-row:1;height:1lh;display:flex;align-items:center;user-select:none;color:var(--muted);padding-right:.4em;font-variant-numeric:tabular-nums}
+.row:not([data-m])::before{content:none}
+.content[data-meta]::after{content:attr(data-meta);color:var(--muted);font-size:.72em;font-weight:400;margin-left:.6em;white-space:nowrap;user-select:none;font-variant-numeric:tabular-nums;opacity:.85}
+/* the drag handle packs against the chevron or checkbox like the other icons, so it stays close to the text; on the few rows that show both it spills into the page margin */
+.handle{flex:none;width:calc(.9*var(--u));height:calc(1.1*var(--u));margin-right:.1em;color:var(--muted);opacity:0;cursor:grab;display:grid;place-items:center;font-size:calc(.7*var(--u));letter-spacing:-.1em;border-radius:4px}
+.row:hover .handle{opacity:.6}
+.handle:hover{opacity:1!important;background:var(--hover)}
+.row input[type=checkbox]{flex:none;margin:0 .1em;width:calc(.9*var(--u));height:calc(.9*var(--u));accent-color:var(--accent);cursor:pointer;opacity:0;transition:opacity .12s}
+.row:hover input[type=checkbox]{opacity:.45}
+.row.task input[type=checkbox]{opacity:1}
+/* wrapped lines sit closer than rows do, so they read as one item: the row keeps the 1.6 rhythm, the text inside uses 1.2, and the padding centres the first line on the gutter icons */
+.content{grid-column:3;grid-row:1;outline:none;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.2;padding:.2em 0;min-height:1lh}
+.content:empty::before{content:attr(data-placeholder);color:var(--muted);pointer-events:none}
+.row.checked .content,.row.checked::before{color:var(--muted);opacity:.6}
+.row.checked .content a,.row.checked .content .due,.row.checked .content .tag,.row.checked .content .pri{color:inherit;background:var(--well)}
+.row.checked input[type=checkbox]{opacity:.55}
+.row.h1{font-size:1.5em;font-weight:650;margin-top:.7em}
+.row.h2{font-size:1.25em;font-weight:650;margin-top:.6em}
+.row.h3{font-size:1.1em;font-weight:650;margin-top:.5em}
+.row.h4,.row.h5,.row.h6{font-weight:650;margin-top:.4em}
+.row:first-child{margin-top:0}
+.row.q .content{border-left:3px solid var(--line);padding-left:.7em;color:var(--muted)}
+.row.code{background:var(--well)}
+.row.code .content{font-family:var(--mono);font-size:.9em;padding:.2em .6em}
+.row.fence .content{color:var(--muted)}
+.row.code+.row:not(.code) {margin-top:.3em}
+.chev{flex:none;border:0;background:transparent;width:var(--u);height:calc(1.1*var(--u));padding:0;cursor:pointer;color:var(--muted);opacity:0;display:grid;place-items:center;border-radius:4px}
+.row:hover .chev,.row.collapsed .chev{opacity:1}
+.chev:hover{background:var(--hover)}
+.chev svg{width:calc(.625*var(--u));height:calc(.625*var(--u));transform:rotate(90deg);transition:transform .12s}
+.row.collapsed .chev svg{transform:none}
+.content code{font-family:var(--mono);font-size:.92em;background:var(--well);padding:.05em .3em;border-radius:4px}
+.content a{color:var(--accent);text-decoration:none}
+.content a:hover{text-decoration:underline}
+.content a.wiki{border-bottom:1px dashed var(--accent)}
+.content del{color:var(--muted)}
+.content .due,.content .tag{font-size:.8em;padding:0 .45em;border-radius:1em;background:var(--well);color:var(--muted);white-space:nowrap}
+.content .due{cursor:pointer}
+.content .due.today{color:var(--accent)}
+.content .due.over{color:var(--danger)}
+.content .pri{font-size:.72em;font-weight:700;padding:0 .5em;border-radius:1em;letter-spacing:.06em;white-space:nowrap;vertical-align:.08em}
+.content .pri.p1{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.content .pri.p2{color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent)}
+.content .pri.p3{color:var(--bg);background:var(--danger)}
+/* spelling marks in orange and grammar in sky blue: the Okabe-Ito pair that stays distinct with red-green colour blindness */
+::spelling-error{text-decoration:underline wavy #e69f00;text-decoration-skip-ink:none}
+::grammar-error{text-decoration:underline wavy #56b4e9;text-decoration-skip-ink:none}
+.ac{position:absolute;z-index:6;background:var(--bg);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:4px;min-width:10rem;max-width:22rem;font-size:14px}
+.ac .ai{display:flex;align-items:center;gap:10px;padding:4px 10px;border-radius:5px;cursor:default;white-space:nowrap}
+.ac .ai .t{flex:1;overflow:hidden;text-overflow:ellipsis}
+.ac .ai .n{color:var(--muted);font-size:12px}
+.ac .ai.sel{background:var(--well)}
+::highlight(find){background:rgba(75,124,214,.22)}
+::highlight(find-cur){background:rgba(233,171,64,.55);color:#111}
+/* sticky heading trail shown once the section's heading has scrolled under the header */
+.crumb{position:fixed;z-index:1;right:0;background:var(--panel);border-bottom:1px solid var(--line);padding:3px 16px 4px 12px;font-size:12.5px;line-height:1.4;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:0 6px 14px -8px rgba(0,0,0,.18)}
+.crumb:hover{color:var(--text)}
+.crumb b{font-weight:600;color:var(--text)}
+.crumb .sep{margin:0 .4em;opacity:.6}
+/* hover preview of a [[note]] */
+.preview{position:absolute;z-index:6;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.16);padding:8px 12px;width:max-content;max-width:min(26rem,calc(100vw - 2rem));font-size:13px;line-height:1.45;pointer-events:none}
+.preview .pt{font-weight:600;margin-bottom:3px}
+.preview .pvl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.preview .pvl.h{color:var(--text);font-weight:600;margin-top:2px}
+.preview .pvl.more{font-style:italic;opacity:.8}
+/* command palette */
+.pal{position:fixed;z-index:20;top:10vh;left:50%;transform:translateX(-50%);width:min(34rem,calc(100vw - 2rem));background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:8px;font-size:14px}
+.pal .fin{width:100%;font-size:15px;padding:7px 10px}
+.pal .plist{margin-top:6px;max-height:min(24rem,60vh);overflow:auto}
+.pal .pi{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:default;white-space:nowrap}
+.pal .pi .cat{color:var(--muted);font-size:12px;flex:none;min-width:5.5rem}
+.pal .pi .lbl{flex:1;overflow:hidden;text-overflow:ellipsis}
+.pal .pi .sc{color:var(--muted);font-size:12.5px;flex:none}
+.pal .pi.sel{background:var(--well)}
+.pal .pi mark{background:transparent;color:var(--accent);font-weight:600}
+.pal .none{padding:8px 10px;color:var(--muted)}
+/* agenda across tabs */
+.agenda{max-width:52rem;font-size:calc(.95*var(--u))}
+.agenda h2{font-size:1.5em;font-weight:650;margin:0 0 .2em}
+.agenda .sub{color:var(--muted);font-size:.85em;margin-bottom:1em}
+.agenda .day{margin:1.3em 0 .35em;font-size:.8em;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.agenda .day.today{color:var(--accent)}
+.agenda .day.over{color:var(--danger)}
+.agenda .ag{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 .6em;align-items:baseline;padding:.15em 0}
+.agenda .ag input[type=checkbox]{width:calc(.9*var(--u));height:calc(.9*var(--u));margin:0;accent-color:var(--accent);cursor:pointer;position:relative;top:.15em}
+.agenda .ag .txt{cursor:pointer;line-height:1.35}
+.agenda .ag .txt:hover{text-decoration:underline;text-decoration-color:var(--line)}
+.agenda .ag .src{color:var(--muted);font-size:.78em;white-space:nowrap}
+/* tab drag and drop */
+.tab.dragging{opacity:.45}
+.tab.drop-l{box-shadow:inset 2px 0 0 var(--accent)}
+.tab.drop-r{box-shadow:inset -2px 0 0 var(--accent)}
+.source{display:block;width:100%;min-height:70vh;border:0;background:transparent;color:var(--text);font:calc(.875*var(--u))/1.6 var(--mono);outline:none;resize:none;padding:0}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);padding:0;max-width:min(36rem,calc(100vw - 2rem));box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(0,0,0,.3)}
+.dlg{padding:20px 24px 16px;font-size:14px;line-height:1.5}
+.dlg h2{margin:0 0 12px;font-size:16px}
+.dlg h3{margin:16px 0 6px;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.dlg table{border-collapse:collapse;width:100%}
+.dlg td{padding:3px 0;vertical-align:top}
+.dlg td:first-child{white-space:nowrap;padding-right:16px;color:var(--text)}
+.dlg td:last-child{color:var(--muted)}
+.dlg kbd{font:inherit;font-size:12.5px;background:var(--well);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.dlg .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.dlg .acts .btn{border:1px solid var(--line);color:var(--text)}
+.dlg .acts .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.dlg .acts .btn.primary:hover{filter:brightness(1.08)}
+.dlg code{font-family:var(--mono);font-size:13px;background:var(--well);padding:0 4px;border-radius:4px}
+.dlg form.actions{margin-top:16px;text-align:right}
+.dlg label.f{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:10px 0}
+.dlg select,.dlg input[type=text],.dlg textarea{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--well);color:var(--text);border-radius:6px;padding:4px 8px;min-width:12rem}
+.dlg textarea{resize:none;line-height:1.4}
+.dlg .hint{color:var(--muted);font-size:12.5px;line-height:1.45;margin:4px 0 0}
+[hidden]{display:none!important}
+@media print{
+  header,.outline,.backlinks,.find,.fbar,.pop,.ac,.handle,.chev,.crumb,.preview,.pal{display:none!important}
+  .content[data-meta]::after{content:none}
+  .row.dim{opacity:1}
+  body{background:#fff;color:#000}
+  .app,main{max-width:none;margin:0;padding:0;min-height:0}
+  .row input[type=checkbox]{opacity:1!important}
+  .row:not(.task) input[type=checkbox]{visibility:hidden}
+}
+</style>
+</head>
+<body>
+<header id="header">
+<div class="tool find" id="find" hidden>
+  <span class="grp">
+    <input class="fin" id="findInput" placeholder="Find" aria-label="Find">
+    <span class="fcount" id="findCount"></span>
+  </span>
+  <span class="grp">
+    <span class="seg">
+      <button class="btn icon" id="findPrev" title="Previous (Shift+Enter)">↑</button>
+      <button class="btn icon" id="findNext" title="Next (Enter)">↓</button>
+    </span>
+    <button class="btn" id="findCase" aria-pressed="false" title="Match case">Aa</button>
+  </span>
+  <span class="grp" id="repl" hidden>
+    <input class="fin" id="replInput" placeholder="Replace with" aria-label="Replace with">
+    <button class="btn" id="replOne">Replace</button>
+    <button class="btn" id="replAll">Replace all</button>
+  </span>
+  <button class="btn" id="replToggle">Replace…</button>
+  <span class="spacer"></span>
+  <button class="btn icon" id="findClose" title="Close (Esc)">×</button>
+</div>
+<div class="tool fbar" id="filterBar" hidden>
+  <span class="grp">
+    <span class="fl">Status</span>
+    <span class="seg" id="fStatus" role="group" aria-label="Status">
+      <button class="btn" data-v="all">All</button>
+      <button class="btn" data-v="open">Open</button>
+      <button class="btn" data-v="done">Done</button>
+    </span>
+  </span>
+  <span class="grp">
+    <span class="fl">Due</span>
+    <select class="fsel" id="fDue" aria-label="Due">
+      <option value="any">Any</option>
+      <option value="due">Today or overdue</option>
+      <option value="overdue">Overdue</option>
+      <option value="today">Today</option>
+      <option value="week">Next 7 days</option>
+      <option value="has">Has a date</option>
+      <option value="none">No date</option>
+    </select>
+  </span>
+  <span class="grp">
+    <span class="fl">Priority</span>
+    <select class="fsel" id="fPri" aria-label="Priority">
+      <option value="any">Any</option>
+      <option value="1">! or higher</option>
+      <option value="2">!! or higher</option>
+      <option value="3">!!! only</option>
+    </select>
+  </span>
+  <span class="grp">
+    <span class="fl">Tags</span>
+    <span class="ftags" id="fTags"></span>
+  </span>
+  <span class="spacer"></span>
+  <span class="fcount" id="fCount"></span>
+  <span class="grp">
+    <span class="fl">Show</span>
+    <button class="btn" id="fParents" aria-pressed="true" title="Keep the headings and parent items of matching rows">Parents</button>
+    <button class="btn" id="fChildren" aria-pressed="true" title="Keep everything nested under a matching row">Children</button>
+    <button class="btn" id="fDim" aria-pressed="false" title="Dim rows that do not match instead of hiding them">Dim</button>
+  </span>
+  <span class="grp">
+    <button class="btn" id="fClear" title="Reset the filter">Clear</button>
+    <button class="btn icon" id="fClose" title="Close (Esc)">×</button>
+  </span>
+</div>
+<div class="bar menurow">
+  <div class="menuwrap"><nav class="menubar" id="menubar" aria-label="Menu">
+    <button class="mbtn" data-menu="file"><u>F</u>ile</button>
+    <button class="mbtn" data-menu="edit"><u>E</u>dit</button>
+    <button class="mbtn" data-menu="view"><u>V</u>iew</button>
+  </nav></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <span class="brand">PowerNotes</span>
+</div>
+</header>
+<div class="pop" id="datePop" hidden role="dialog" aria-label="Due date">
+  <input type="date" id="dpInput" aria-label="Date">
+  <div class="quick">
+    <button class="btn" data-d="0">Today</button>
+    <button class="btn" data-d="1">Tomorrow</button>
+    <button class="btn" data-d="7">Next week</button>
+    <button class="btn" id="dpRemove">Remove</button>
+  </div>
+</div>
+<div class="ac" id="ac" hidden role="listbox"></div>
+<div class="preview" id="preview" hidden role="tooltip"></div>
+<div class="crumb" id="crumb" hidden title="Jump to this heading"></div>
+<div class="pal" id="pal" hidden role="dialog" aria-label="Command palette">
+  <input class="fin" id="palInput" placeholder="Type a command, a tab name, or a heading…" aria-label="Command" spellcheck="false" autocomplete="off">
+  <div class="plist" id="palList" role="listbox"></div>
+</div>
+<div class="app">
+<aside class="outline" id="outline" hidden aria-label="Outline"></aside>
+<main id="main">
+  <h1 class="doctitle" id="docTitle" title="Double-click to rename"></h1>
+  <div id="editor" spellcheck="true"></div>
+  <textarea id="src" class="source" hidden spellcheck="false" aria-label="Markdown source"></textarea>
+  <div class="agenda" id="agenda" hidden aria-label="Agenda"></div>
+  <div class="backlinks" id="backlinks" hidden></div>
+</main>
+</div>
+<input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden>
+<input type="file" id="dirInput" webkitdirectory multiple hidden>
+<dialog id="help">
+<div class="dlg">
+  <h2>PowerNotes help</h2>
+  <h3>Type at the start of a line</h3>
+  <table>
+    <tr><td><code># </code> <code>## </code> <code>### </code></td><td>Heading. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> toggles a heading, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> sets the level, Tab / Shift+Tab changes it</td></tr>
+    <tr><td><code>- </code> <code>1. </code> <code>[] </code></td><td>Bullet, numbered item, checkbox. Any line can also be checked from the box in the margin</td></tr>
+    <tr><td><code>&gt; </code></td><td>Quote</td></tr>
+    <tr><td><code>```</code></td><td>Start and end a code block</td></tr>
+  </table>
+  <h3>Inline</h3>
+  <table>
+    <tr><td><code>**bold**</code> <code>*italic*</code> <code>`code`</code> <code>~~struck~~</code></td><td>Always shown formatted. Select formatted text and press its shortcut again to remove the formatting. View › Source shows the raw markdown</td></tr>
+    <tr><td><code>[text](url)</code></td><td>Link. <kbd>Ctrl</kbd>+click opens it, <kbd>Ctrl</kbd>+<kbd>K</kbd> on it edits the address</td></tr>
+    <tr><td><code>[[Other note]]</code></td><td>Link to another tab by name. <kbd>Ctrl</kbd>+click opens or creates it. Notes that link here are listed at the bottom</td></tr>
+    <tr><td><code>@3/5</code> <code>@Mar 5</code> <code>@fri</code> <code>@tomorrow</code></td><td>Due date, in almost any format. It is completed when you type a space after it, the current year is assumed, and it shows as <code>@Today</code>, <code>@Tomorrow</code> or <code>@Thu 3/5</code>. Click the date to pick another one or remove it</td></tr>
+    <tr><td><code>#tag</code></td><td>Tag. <kbd>Ctrl</kbd>+click a tag to filter by it. A tag on a heading or a parent item applies to everything under it</td></tr>
+    <tr><td><code>!</code> <code>!!</code> <code>!!!</code></td><td>Priority, as a word on its own anywhere in the line. Shown as a chip; the filter and Edit › Sort section know about it. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd> raises or lowers it</td></tr>
+    <tr><td>Typing <code>#</code> <code>[[</code> or <code>@</code></td><td>Suggests tags, note names and dates as you type: after <code>@</code>, the dates used in your notes and the next two weeks, narrowed by what you type (<code>@fri</code>, <code>@2026-09</code>, <code>@tom</code>). <kbd>↑</kbd> <kbd>↓</kbd> choose, <kbd>Enter</kbd> or <kbd>Tab</kbd> accepts, <kbd>Esc</kbd> dismisses</td></tr>
+    <tr><td>Hover a <code>[[link]]</code></td><td>Previews the first lines of that note</td></tr>
+  </table>
+  <h3>Editing</h3>
+  <table>
+    <tr><td><kbd>Enter</kbd></td><td>New line, continuing the list. On an empty item, ends the list. At the start of a heading, moves the heading down and leaves an empty heading above it</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>New line below / above, without splitting the current one</td></tr>
+    <tr><td><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Indent / outdent the selected lines</td></tr>
+    <tr><td><kbd>Backspace</kbd> at line start</td><td>Remove the checkbox (a bullet goes with it), then the bullet or number, then outdent, then join with the line above</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Delete the word before / after the caret. With <kbd>Shift</kbd>, delete to the start / end of the line</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Duplicate the selected lines (a collapsed line takes what is folded under it along)</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd></td><td>Move the line (with anything nested under it). Lines can also be dragged by the ⠿ handle</td></tr>
+    <tr><td>Edit › Sort section</td><td>Sorts the items around the caret by date, by priority, open items first, or A to Z. On a list item it sorts that list; elsewhere it sorts everything under the nearest heading. Nested lines move with their parent</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Space</kbd></td><td>Check / uncheck the selected lines, adding a checkbox if there is none</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd></td><td>Add or remove the checkbox itself; a number stays, a bullet goes with the box. <kbd>Alt</kbd>+click the box in the margin also removes it</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></td><td>Due date: adds today, then cycles today, tomorrow, next week</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>←</kbd> / <kbd>→</kbd></td><td>Collapse / expand the current section or list. <kbd>Ctrl</kbd>+<kbd>.</kbd> toggles it, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> does everything. A collapsed heading shows how many lines it hides; a heading over checkboxes shows how much is done</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd> <kbd>I</kbd> <kbd>E</kbd> <kbd>K</kbd></td><td>Bold, italic, code, link. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> strikethrough</td></tr>
+    <tr><td><kbd>Shift</kbd>+arrows, <kbd>PgUp</kbd>/<kbd>PgDn</kbd></td><td>Select text, across lines too. <kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>End</kbd> go to the first / last line</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd></td><td>Undo / redo</td></tr>
+  </table>
+  <h3>Files and view</h3>
+  <table>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>Command palette: type part of any menu action, tab name or heading and press <kbd>Enter</kbd></td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Agenda: every open item with a date, from every tab, grouped by day. Check items off there or click one to jump to it</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>F</kbd> <kbd>E</kbd> <kbd>V</kbd></td><td>Open a menu. Arrow keys move, the underlined letter or <kbd>Enter</kbd> chooses, <kbd>→</kbd> opens a submenu, <kbd>Esc</kbd> closes</td></tr>
+    <tr><td>Right-click</td><td>Menu of the common line actions. <kbd>Shift</kbd>+right-click keeps the browser's own menu, with its spelling suggestions</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Save / save as. Opened files are remembered, so Save writes straight back</td></tr>
+    <tr><td>File › Open folder…</td><td>Choose a notes folder. Its files are listed in the File menu, new notes save into it without a dialog, and <code>[[links]]</code> open or create files there</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Open one or more files / print or save as PDF. Files can also be dropped onto the page</td></tr>
+    <tr><td>File › Workspace</td><td>Open a whole folder as tabs (subfolders included), or save the open files as a named workspace and reopen them together later, from one folder or several. Opening a workspace replaces the tabs that have nothing unsaved; tabs with changes stay. A folder dropped onto the page opens as a workspace too. In a folder workspace a new tab is a file in the folder at once, edits are saved as you type, and notes added, changed or removed in the folder by other programs appear in the tabs (Settings can turn either off)</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>N</kbd> / <kbd>Alt</kbd>+<kbd>W</kbd></td><td>New tab / close tab. <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> switches. Double-click a tab or the title to rename. A file is renamed on disk too; PowerNotes asks for access to its folder the first time</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Next / previous tab, where the browser lets a page have that key. <kbd>Alt</kbd>+<kbd>PgDn</kbd> / <kbd>PgUp</kbd> always works</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move the tab left / right (<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>PgUp</kbd> / <kbd>PgDn</kbd> too). Tabs can also be dragged into place</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td><td>Find / replace</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Filter by open or done, due date and tags. <em>Parents</em> keeps the headings and parent items of matches, <em>Children</em> keeps what is nested under them, <em>Dim</em> fades the rest instead of hiding it. View › Today is a preset for open items due today or earlier</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Outline sidebar</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>=</kbd> <kbd>−</kbd> <kbd>0</kbd> or <kbd>Ctrl</kbd>+wheel</td><td>Zoom in, out, reset</td></tr>
+    <tr><td><kbd>F1</kbd> or <kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>This help, also under File › Help</td></tr>
+  </table>
+  <form method="dialog" class="actions"><button class="btn">Close</button></form>
+</div>
+</dialog>
+<dialog id="settings">
+<div class="dlg">
+  <h2>Settings</h2>
+  <label class="f">Theme <select id="setTheme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+  <label class="f">Font <select id="setFont"><option value="system">System sans-serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
+  <label class="f">Folder workspace follows the folder <select id="setSync"><option value="on">On</option><option value="off">Off</option></select></label>
+  <label class="f">Folder workspace saves as you type <select id="setAutosave"><option value="on">On</option><option value="off">Off</option></select></label>
+  <p class="hint">In a folder workspace a new tab is a file in the folder from the start, and notes added, changed or removed in the folder by other programs show up in the tabs a few seconds later. With saving as you type, edits reach the file about a second after you pause; otherwise Ctrl+S writes them.</p>
+  <label class="f">Spellcheck <select id="setSpell"><option value="on">On</option><option value="off">Off</option></select></label>
+  <label class="f">Spellcheck language <input type="text" id="setLang" placeholder="e.g. en-US, en-GB, fr" spellcheck="false"></label>
+  <label class="f">Spelling test <textarea id="setSpellTest" rows="1" spellcheck="true" aria-label="Spelling test">Teh quikc brown fox</textarea></label>
+  <p class="hint">Spelling marks are drawn by the browser, not by PowerNotes, and only after you type. Click at the end of the test box and type a space: if the misspelled words get no wavy underline there either, spell checking is off in the browser. Chrome: Settings › Languages › Spell check. Edge: Settings › Languages › Check spelling as you type. On Windows the basic checker also needs the language's typing pack, under Windows Settings › Time &amp; language › Language &amp; region › (your language) › Language options.</p>
+  <form method="dialog" class="actions"><button class="btn">Done</button></form>
+</div>
+</dialog>
+<dialog id="access">
+<div class="dlg">
+  <h2 id="accessTitle"></h2>
+  <p id="accessMsg"></p>
+  <p class="hint" id="accessHint"></p>
+  <div class="acts"><button type="button" class="btn" id="accessCancel">Cancel</button><button type="button" class="btn" id="accessAlt"></button><button type="button" class="btn primary" id="accessOk"></button></div>
+</div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const editor=$('editor'), main=$('main'), src=$('src'), tabsEl=$('tabs'), fileInput=$('file'), dirInput=$('dirInput'), outlineEl=$('outline'), backEl=$('backlinks'), acEl=$('ac'), docTitle=$('docTitle');
+const findBar=$('find'), findInput=$('findInput'), findCount=$('findCount'), replWrap=$('repl'), replInput=$('replInput'), findCaseBtn=$('findCase'), replToggle=$('replToggle');
+const helpDlg=$('help'), settingsDlg=$('settings'), accessDlg=$('access'), menubar=$('menubar'), appEl=document.querySelector('.app');
+const filterBar=$('filterBar'), fStatus=$('fStatus'), fDue=$('fDue'), fPri=$('fPri'), fTags=$('fTags'), fCount=$('fCount'), fParents=$('fParents'), fChildren=$('fChildren'), fDim=$('fDim');
+const datePop=$('datePop'), dpInput=$('dpInput'), headerEl=$('header'), crumbEl=$('crumb'), pvEl=$('preview'), palEl=$('pal'), palInput=$('palInput'), palList=$('palList'), agendaEl=$('agenda');
+const KEY='mdnotes.v2', OLDKEY='mdnotes.draft';
+const CHEV='<svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M3 1l5 4-5 4z"/></svg>';
+const WELCOME=`# Welcome
+Each line is a row. Hover a row and click the box beside it to check it off.
+
+## Getting started
+- [ ] Open a markdown file, or just start typing
+- [x] Click the arrow beside a heading or list to collapse it
+- [ ] Press Ctrl+S to save @today
+
+## How it works
+1. Start a line with \`#\` for a heading, \`-\` for a bullet, \`1.\` for a numbered list, or \`[]\` for a checkbox
+2. Tab and Shift+Tab indent lines and nest lists
+   - Nested lists collapse too
+3. Ctrl+Space checks or unchecks the current line, Alt+Up/Down moves it
+4. **Bold**, *italic* and \`code\` stay formatted while you type; put the caret on a word to edit its markers
+5. Link to another tab with [[Ideas]] and it appears under **Linked from** on that tab
+6. Add #tags anywhere, and mark priority with ! or !! anywhere on a line
+7. The **View** menu has an outline, an agenda of dated items across tabs, a filter for open items, due dates, priority and tags, and settings. **Help** lists every shortcut, and Ctrl+Shift+P finds any command by name
+`;
+
+const PLAIN=(()=>{try{const d=document.createElement('div');d.contentEditable='plaintext-only';return d.contentEditable==='plaintext-only';}catch(e){return false;}})();
+editor.contentEditable=PLAIN?'plaintext-only':'true';
+const HL=('highlights' in CSS)&&typeof Highlight==='function';
+
+/* ---------- state ---------- */
+let docs=[], cur=0, lines=[], fenced=[], hiddenArr=[], dimArr=[], indentUnit=2;
+let undo=[], redo=[];
+const FILTER_DEFAULTS={status:'all',due:'any',pri:'any',tags:[],parents:true,children:true,dim:false};
+const settings={zoom:1,hideDone:false,indentHeadings:true,outline:false,theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,filter:Object.assign({on:false},FILTER_DEFAULTS)};
+let filterStats={match:0,total:0};
+let typing=false, typingTimer=0, draftTimer=0, srcTimer=0, mouseDown=false, composing=false, lastSel=null, sourceOn=false;
+const htmlCache=new Map();
+const find={open:false, query:'', cs:false, matches:[], idx:-1};
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+
+function newDoc(name,text){ return {id:uid(), name:name||'Untitled.md', lines:fromTextRaw(text||''), handle:null, dirty:false, undo:[], redo:[], sel:null, scroll:0, indentUnit:2}; }
+function D(){ return docs[cur]; }
+function setLines(arr){ lines=arr; D().lines=arr; }
+function todayStr(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function shiftDate(n){ const d=new Date(); d.setDate(d.getDate()+n); return todayStr(d); }
+
+/* ---------- line model ---------- */
+const RE_H=/^(#{1,6})\s(.*)$/;
+const RE_Q=/^(\s*)>\s?(.*)$/;
+const RE_LI=/^(\s*)([-*+]|\d+[.)])(?:\s+\[([ xX])\](?:\s(.*))?|\s(.*))$/;
+const RE_FENCE=/^\s*(```|~~~)/;
+const RE_DUE=/@(\d{4}-\d{2}-\d{2})(?![\w-])/;
+const RE_TAG=/(?<![\w&#\/])#([A-Za-z_][\w\-\/]*)/g;
+/* a priority marker is a standalone !, !! or !!! */
+const RE_PRI=/(?<!\S)(!{1,3})(?!\S)/;
+function priOf(body){ const m=RE_PRI.exec(body); return m?m[1].length:0; }
+
+function parse(text){
+  let m;
+  if((m=RE_H.exec(text))) return {type:'h',level:m[1].length,indent:0,checked:null,body:m[2]||''};
+  if((m=RE_Q.exec(text))){ const sp=m[1].replace(/\t/g,'    ').length; return {type:'q',level:0,indent:Math.round(sp/indentUnit),checked:null,body:m[2]}; }
+  if((m=RE_LI.exec(text))){
+    const spaces=m[1].replace(/\t/g,'    ').length, ol=/\d/.test(m[2]);
+    return {type:ol?'ol':'ul',level:0,indent:Math.round(spaces/indentUnit),num:ol?parseInt(m[2],10):0,checked:m[3]==null?null:/x/i.test(m[3]),body:m[4]!=null?m[4]:(m[5]||'')};
+  }
+  const sp=/^\s*/.exec(text)[0].replace(/\t/g,'    ').length;
+  return {type:'p',level:0,indent:Math.round(sp/indentUnit),checked:null,body:text.trimStart()};
+}
+function parseAt(i){
+  if(fenced[i]) return {type:'p',level:0,indent:0,checked:null,body:lines[i].text,raw:true};
+  return parse(lines[i].text);
+}
+function build(p){
+  if(p.raw) return p.body;
+  if(p.type==='h') return '#'.repeat(p.level)+' '+p.body;
+  let s=' '.repeat(Math.max(0,p.indent)*indentUnit);
+  if(p.type==='q') return s+'> '+p.body;
+  if(p.type==='ul') s+='- '; else if(p.type==='ol') s+=(p.num||1)+'. ';
+  if((p.type==='ul'||p.type==='ol')&&p.checked!=null) s+=p.checked?'[x] ':'[ ] ';
+  return s+p.body;
+}
+const isList=p=>p.type==='ul'||p.type==='ol';
+function detectIndent(arr){
+  let min=Infinity;
+  for(const l of arr){ const m=/^( +)([-*+]|\d+[.)])\s/.exec(l.text); if(m) min=Math.min(min,m[1].length); }
+  return (min>=2&&min<=4)?min:2;
+}
+function computeFences(){
+  fenced=new Array(lines.length).fill(false); let inF=false;
+  for(let i=0;i<lines.length;i++){ const f=RE_FENCE.test(lines[i].text); fenced[i]=inF||f; if(f) inF=!inF; }
+}
+const NO_TAGS=new Set();
+function tagsOf(body){ const s=new Set(); RE_TAG.lastIndex=0; let m; while((m=RE_TAG.exec(body))) s.add(m[1].toLowerCase()); return s; }
+function allTags(){
+  const m=new Map();
+  lines.forEach((l,i)=>{ if(fenced[i]) return; RE_TAG.lastIndex=0; let x; const body=parse(l.text).body; while((x=RE_TAG.exec(body))){ const k=x[1].toLowerCase(), e=m.get(k); if(e) e.n++; else m.set(k,{k,label:x[1],n:1}); } });
+  return [...m.values()].sort((a,b)=>b.n-a.n||a.k.localeCompare(b.k));
+}
+function filterActive(){ const f=settings.filter; return f.on&&(f.status!=='all'||f.due!=='any'||f.pri!=='any'||f.tags.length>0); }
+function rowMatches(p,inherited,today,week){
+  const f=settings.filter;
+  if(f.status==='open'&&p.checked!==false) return false;
+  if(f.status==='done'&&p.checked!==true) return false;
+  if(f.pri!=='any'&&(p.raw?0:priOf(p.body))<+f.pri) return false;
+  if(f.due!=='any'){
+    const d=p.raw?null:dueOf(p.body);
+    if(f.due==='has'&&!d) return false;
+    if(f.due==='none'&&d) return false;
+    if(f.due==='due'&&!(d&&d<=today)) return false;
+    if(f.due==='overdue'&&!(d&&d<today)) return false;
+    if(f.due==='today'&&d!==today) return false;
+    if(f.due==='week'&&!(d&&d<=week)) return false;
+  }
+  if(f.tags.length){ const own=p.raw?NO_TAGS:tagsOf(p.body); for(const t of f.tags) if(!own.has(t)&&!inherited.has(t)) return false; }
+  return true;
+}
+function renumber(){
+  computeFences();
+  let counters={};
+  for(let i=0;i<lines.length;i++){
+    const p=parseAt(i);
+    if(p.type==='h'||((p.type==='p'||p.type==='q')&&p.body!==''&&p.indent===0)){counters={};continue;}
+    if(!isList(p)) continue;
+    for(const k of Object.keys(counters)) if(+k>p.indent) delete counters[k];
+    if(p.type==='ol'){ const n=(counters[p.indent]||0)+1; counters[p.indent]=n; if(p.num!==n){p.num=n;lines[i].text=build(p);} }
+    else delete counters[p.indent];
+  }
+}
+function sectionEnd(i){
+  const p=parseAt(i);
+  if(p.type==='h'){ let j=i+1; while(j<lines.length){ const q=parseAt(j); if(q.type==='h'&&q.level<=p.level) break; j++; } return j; }
+  if(isList(p)){
+    let j=i+1,last=i;
+    while(j<lines.length){ const q=parseAt(j); if(q.type==='p'&&q.body===''&&!q.raw){ j++; continue; } if(q.type==='h'||q.raw||q.indent<=p.indent) break; last=j; j++; }
+    return last+1;
+  }
+  return i+1;
+}
+function collapsible(i){ const p=parseAt(i); return p.type==='h'||(isList(p)&&sectionEnd(i)>i+1); }
+function taskStats(i){ let total=0, done=0; for(let j=i+1,e=sectionEnd(i);j<e;j++){ const q=parseAt(j); if(q.checked!=null){ total++; if(q.checked) done++; } } return {total,done}; }
+/* a row's span is itself plus, when it is collapsed, everything folded under it */
+function spanEnd(i){ return lines[i].collapsed&&collapsible(i)?Math.max(i+1,sectionEnd(i)):i+1; }
+function dueOf(body){ const m=RE_DUE.exec(body); return m?m[1]:null; }
+function computeHidden(){
+  const n=lines.length, hidden=new Array(n).fill(false);
+  for(let i=0;i<n;i++){
+    const p=parseAt(i);
+    const fold=lines[i].collapsed&&collapsible(i), done=settings.hideDone&&p.checked===true;
+    if(fold||done){ const e=sectionEnd(i); for(let j=done?i:i+1;j<e;j++) hidden[j]=true; }
+  }
+  dimArr=new Array(n).fill(false); filterStats={match:0,total:n};
+  if(filterActive()){
+    const f=settings.filter, keep=new Array(n).fill(false), today=todayStr(), week=shiftDate(7), stack=[];
+    for(let i=0;i<n;i++){
+      while(stack.length&&stack[stack.length-1].end<=i) stack.pop();
+      const inh=stack.length?stack[stack.length-1].tags:NO_TAGS, p=parseAt(i);
+      if(rowMatches(p,inh,today,week)){ keep[i]=true; filterStats.match++; if(f.parents) for(const s of stack) keep[s.j]=true; if(f.children&&collapsible(i)) for(let j=i+1,e=sectionEnd(i);j<e;j++) keep[j]=true; }
+      if(collapsible(i)){ const own=p.raw?NO_TAGS:tagsOf(p.body); const tags=own.size?new Set([...inh,...own]):inh; stack.push({j:i,end:sectionEnd(i),tags}); }
+    }
+    for(let i=0;i<n;i++) if(!keep[i]){ if(f.dim) dimArr[i]=true; else hidden[i]=true; }
+  }
+  return hidden;
+}
+function fromTextRaw(text){
+  let arr=text.replace(/\r\n?/g,'\n').split('\n');
+  if(arr.length>1&&arr[arr.length-1]==='') arr.pop();
+  if(!arr.length) arr=[''];
+  return arr.map(t=>({text:t,collapsed:false}));
+}
+function fromText(text,keepCollapsed){
+  const prev=new Set(); if(keepCollapsed) for(const l of lines) if(l.collapsed) prev.add(l.text);
+  const arr=fromTextRaw(text); for(const l of arr) l.collapsed=prev.has(l.text); return arr;
+}
+const serializeLines=arr=>arr.map(l=>l.text).join('\n')+'\n';
+function serialize(){ return serializeLines(lines); }
+
+/* ---------- inline markdown ---------- */
+function esc(s){ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function dueClass(d){ const t=todayStr(); return d<t?'over':(d===t?'today':''); }
+const MONTHS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'], DAYS=['sun','mon','tue','wed','thu','fri','sat'];
+function dueLabel(iso){
+  const [y,mo,d]=iso.split('-').map(Number), now=new Date();
+  if(iso===todayStr(now)) return '@Today';
+  const tm=new Date(now); tm.setDate(tm.getDate()+1); if(iso===todayStr(tm)) return '@Tomorrow';
+  const dt=new Date(y,mo-1,d); let s='@'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' '+mo+'/'+d;
+  if(y!==now.getFullYear()){ const six=new Date(now); six.setMonth(six.getMonth()+6); if(dt>=six) s+='/'+y; }
+  return s;
+}
+function parseDateToken(tok){
+  const t=tok.trim().toLowerCase().replace(/,/g,' ').replace(/\s+/g,' ').replace(/\.$/,''), now=new Date(), Y=now.getFullYear();
+  const mk=(y,m,d)=>{ if(y<100) y+=2000; if(m<1||m>12||d<1||d>31) return null; const dt=new Date(y,m-1,d); return (dt.getMonth()===m-1&&dt.getDate()===d)?todayStr(dt):null; };
+  const shift=n=>{ const d=new Date(now); d.setDate(d.getDate()+n); return todayStr(d); };
+  if(t==='today') return shift(0); if(t==='tomorrow') return shift(1); if(t==='yesterday') return shift(-1);
+  let m;
+  if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t))) return mk(+m[1],+m[2],+m[3]);
+  if((m=/^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/.exec(t))) return mk(m[3]?+m[3]:Y,+m[1],+m[2]);
+  const mon=w=>{ const k=MONTHS.findIndex(x=>w.startsWith(x)); return k>=0&&w.length<=9?k+1:0; };
+  if((m=/^([a-z]{3,9})\.? (\d{1,2})(?:st|nd|rd|th)?(?: (\d{2,4}))?$/.exec(t))&&mon(m[1])) return mk(m[3]?+m[3]:Y,mon(m[1]),+m[2]);
+  if((m=/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]{3,9})\.?(?: (\d{2,4}))?$/.exec(t))&&mon(m[2])) return mk(m[3]?+m[3]:Y,mon(m[2]),+m[1]);
+  if((m=/^(next )?([a-z]{3,9})$/.exec(t))){ const di=DAYS.findIndex(x=>m[2].startsWith(x)); if(di>=0){ let delta=(di-now.getDay()+7)%7; if(m[1]&&delta===0) delta=7; return shift(delta); } }
+  return null;
+}
+function expandDateBefore(nb,caret,needSpace){
+  let pre=nb.slice(0,caret); if(needSpace){ if(!pre.endsWith(' ')) return null; pre=pre.slice(0,-1); }
+  const words=pre.split(' '); if(words.length&&/,$/.test(words[words.length-1])) return null;
+  for(let n=1;n<=3&&n<=words.length;n++){
+    const cand=words.slice(words.length-n).join(' '); if(cand[0]!=='@'||cand.length<2) continue;
+    if(cand.indexOf('@',1)>=0) continue;
+    const iso=parseDateToken(cand.slice(1)); if(!iso) continue;
+    const start=pre.length-cand.length, rep='@'+iso+(needSpace?' ':'');
+    if(cand==='@'+iso) return null;
+    return {nb:nb.slice(0,start)+rep+nb.slice(caret),caret:start+rep.length};
+  }
+  return null;
+}
+function inline(raw){
+  let html='', map=[];
+  const text=(s,base)=>{ for(let k=0;k<s.length;k++) map.push(base+k); html+=esc(s); };
+  function walk(s,base){
+    const re=/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)|\*\*(?=\S)([\s\S]*?\S)\*\*|__(?=\S)([\s\S]*?\S)__|(?<![\w*])\*(?=\S)([^*]*?\S)\*(?![\w*])|(?<![\w_])_(?=\S)([^_]*?\S)_(?![\w_])|~~(?=\S)([\s\S]*?\S)~~|\[\[([^\]\n]+?)\]\]|!?\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|@(\d{4}-\d{2}-\d{2})(?![\w-])|(?<![\w&#\/])#([A-Za-z_][\w\-\/]*)|(?<!\S)(!{1,3})(?!\S)|https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"]/g;
+    let last=0,m;
+    while((m=re.exec(s))){
+      text(s.slice(last,m.index),base+last);
+      const start=base+m.index, end=start+m[0].length;
+      last=m.index+m[0].length;
+      /* code, links, chips and tags are not prose, so the spellchecker leaves them alone */
+      if(m[1]!=null){ html+='<code spellcheck="false">'; text(m[2],start+m[1].length); html+='</code>'; }
+      else if(m[3]!=null||m[4]!=null){ html+='<strong>'; walk(m[3]!=null?m[3]:m[4],start+2); html+='</strong>'; }
+      else if(m[5]!=null||m[6]!=null){ html+='<em>'; walk(m[5]!=null?m[5]:m[6],start+1); html+='</em>'; }
+      else if(m[7]!=null){ html+='<del>'; walk(m[7],start+2); html+='</del>'; }
+      else if(m[8]!=null){ html+='<a class="wiki" spellcheck="false" data-wiki="'+esc(m[8].trim())+'" title="Ctrl+click to open · hover for a preview">'; text(m[8],start+2); html+='</a>'; }
+      else if(m[9]!=null){ const off=start+(m[0][0]==='!'?2:1); html+='<a href="'+esc(m[10])+'" title="Ctrl+click to open">'; walk(m[9],off); html+='</a>'; }
+      else if(m[11]!=null){ const lab=dueLabel(m[11]); html+='<span class="due '+dueClass(m[11])+'" spellcheck="false" data-iso="'+m[11]+'" title="'+m[11]+' · click to change">'; for(let k=0;k<lab.length;k++) map.push(start); html+=esc(lab)+'</span>'; }
+      else if(m[12]!=null){ html+='<span class="tag" spellcheck="false" title="Ctrl+click to filter">'; text(m[0],start); html+='</span>'; }
+      else if(m[13]!=null){ html+='<span class="pri p'+m[13].length+'" spellcheck="false" title="Priority '+m[13].length+' of 3">'; text(m[0],start); html+='</span>'; }
+      else { html+='<a href="'+esc(m[0])+'" spellcheck="false" title="Ctrl+click to open">'; text(m[0],start); html+='</a>'; }
+    }
+    text(s.slice(last),base+last);
+  }
+  walk(raw,0); map.push(raw.length);
+  return {html,map,cls:''};
+}
+function idMap(n){ const a=new Array(n+1); for(let k=0;k<=n;k++) a[k]=k; return a; }
+function rowRender(i){
+  const p=parseAt(i);
+  if(p.raw) return {html:esc(p.body),map:idMap(p.body.length)};
+  return inline(p.body);
+}
+function mapOf(i){ return rowRender(i).map; }
+function renderRow(i){
+  const c=contentOf(i); if(!c) return;
+  const r=rowRender(i);
+  if(htmlCache.get(i)===r.html) return;
+  c.innerHTML=r.html; htmlCache.set(i,r.html);
+}
+
+/* ---------- render ---------- */
+const el=(tag,cls)=>{ const e=document.createElement(tag); if(cls) e.className=cls; return e; };
+let foldState={any:false,anyExpanded:false}, anyChecked=false;
+function render(){
+  renumber();
+  hiddenArr=computeHidden();
+  const frag=document.createDocumentFragment();
+  foldState={any:false,anyExpanded:false}; anyChecked=false;
+  htmlCache.clear();
+  const stack=[];
+  lines.forEach((l,i)=>{
+    const p=parseAt(i);
+    let hd=0;
+    if(p.type==='h'){ while(stack.length&&stack[stack.length-1]>=p.level) stack.pop(); hd=stack.length; stack.push(p.level); }
+    else hd=stack.length;
+    const row=el('div','row'); row.dataset.i=i;
+    if(hiddenArr[i]) row.classList.add('hidden');
+    if(dimArr[i]) row.classList.add('dim');
+    if(settings.indentHeadings&&hd) row.style.setProperty('--hd',hd);
+    if(p.raw){ row.classList.add('code'); if(RE_FENCE.test(l.text)) row.classList.add('fence'); }
+    if(p.type==='q') row.classList.add('q');
+    const g=el('div','gutter'), c=el('div','content');
+    g.contentEditable='false';
+    const h=el('span','handle'); h.textContent='⠿'; h.draggable=true; h.title='Drag to move'; g.append(h);
+    const meta=[];
+    if(collapsible(i)){
+      foldState.any=true; if(l.collapsed) row.classList.add('collapsed'); else foldState.anyExpanded=true;
+      const b=el('button','chev'); b.type='button'; b.tabIndex=-1; b.setAttribute('aria-label',l.collapsed?'Expand':'Collapse'); b.innerHTML=CHEV; g.append(b);
+      if(l.collapsed){ let k=0; for(let j=i+1,e=sectionEnd(i);j<e;j++) if(lines[j].text.trim()) k++; meta.push(k===1?'1 line':k+' lines'); }
+    }
+    if(p.type==='h'){ row.classList.add('h'+p.level); const t=taskStats(i); if(t.total) meta.push(Math.round(100*t.done/t.total)+'%'); }
+    else {
+      row.style.setProperty('--lvl',p.indent);
+      if(!p.raw){
+        const cb=el('input'); cb.type='checkbox'; cb.tabIndex=-1; cb.checked=!!p.checked; cb.setAttribute('aria-label','Done'); cb.title=p.checked==null?'Add a checkbox':'Done · Alt+click removes the checkbox';
+        if(p.checked!=null) row.classList.add('task'); if(p.checked){ row.classList.add('checked'); anyChecked=true; }
+        g.append(cb);
+      }
+      if(p.type==='ul'&&p.checked==null) row.dataset.m='•'; else if(p.type==='ol') row.dataset.m=p.num+'.';
+    }
+    const r=rowRender(i); c.innerHTML=r.html; htmlCache.set(i,r.html);
+    if(meta.length) c.dataset.meta='('+meta.join(' · ')+')';
+    if(lines.length===1&&l.text==='') c.dataset.placeholder='Start typing. Begin a line with # for a heading, - for a list, 1. for numbers, [] for a checkbox.';
+    row.append(g,c); frag.append(row);
+  });
+  editor.replaceChildren(frag);
+  renderOutline(); renderBacklinks(); renderFilterBar(); updateHighlights(); scheduleCrumb();
+}
+/* expands whatever hides row i, then puts the caret on it and scrolls it to the top */
+function revealRow(i,off){
+  for(let j=i-1;j>=0;j--) if(lines[j].collapsed&&collapsible(j)&&sectionEnd(j)>i) lines[j].collapsed=false;
+  render(); setSel({i,off:off==null?parseAt(i).body.length:off});
+  const r=editor.children[i]; if(r) r.scrollIntoView({block:'start'});
+}
+
+/* ---------- outline and backlinks ---------- */
+function renderOutline(){
+  outlineEl.hidden=!settings.outline||sourceOn||agendaOn; if(outlineEl.hidden) return;
+  const frag=document.createDocumentFragment(); const h=el('div','oh'); h.textContent='Outline'; frag.append(h);
+  let any=false;
+  lines.forEach((l,i)=>{ const p=parseAt(i); if(p.type!=='h') return; any=true; const a=el('a','oi'); a.dataset.i=i; a.style.setProperty('--d',p.level-1); a.textContent=p.body||'(untitled)'; a.title=p.body; frag.append(a); });
+  if(!any){ const e=el('div','oe'); e.textContent='No headings yet'; frag.append(e); }
+  outlineEl.replaceChildren(frag); markOutline();
+}
+function markOutline(){
+  if(outlineEl.hidden||!lastSel) return;
+  let cur=-1; for(let i=lastSel.f.i;i>=0;i--) if(parseAt(i).type==='h'){ cur=i; break; }
+  outlineEl.querySelectorAll('.oi').forEach(a=>a.classList.toggle('cur',+a.dataset.i===cur));
+}
+outlineEl.addEventListener('click',e=>{ const a=e.target.closest('.oi'); if(!a) return; const i=+a.dataset.i; if(lines[i]) revealRow(i); });
+function wikiTargets(name){ const n=name.replace(/\.md$/i,'').toLowerCase(); return docs.filter(d=>d.name.replace(/\.md$/i,'').toLowerCase()===n); }
+function renderBacklinks(){
+  const me=D().name.replace(/\.md$/i,'').toLowerCase(); const from=[];
+  docs.forEach((d,k)=>{ if(k===cur) return; const re=/\[\[([^\]\n]+?)\]\]/g; for(const l of d.lines){ let m; while((m=re.exec(l.text))){ if(m[1].trim().replace(/\.md$/i,'').toLowerCase()===me){ from.push(k); break; } } if(from[from.length-1]===k) break; } });
+  backEl.hidden=!from.length||sourceOn||agendaOn; if(backEl.hidden) return;
+  backEl.replaceChildren(); backEl.append('Linked from: ');
+  from.forEach(k=>{ const a=el('a'); a.textContent=docs[k].name; a.dataset.k=k; backEl.append(a); });
+}
+backEl.addEventListener('click',e=>{ const a=e.target.closest('a'); if(a) switchTab(+a.dataset.k); });
+
+/* ---------- selection ---------- */
+function contentOf(i){ const r=editor.children[i]; return r?r.querySelector('.content'):null; }
+function rowOf(node){ const e=node.nodeType===3?node.parentElement:node; return e&&e.closest?e.closest('.row'):null; }
+function mkSel(a,f){ const fwd=a.i<f.i||(a.i===f.i&&a.off<=f.off); return {a,f,start:fwd?a:f,end:fwd?f:a,collapsed:a.i===f.i&&a.off===f.off}; }
+function renderedOffset(map,raw){ let lo=0,hi=map.length-1; while(lo<hi){ const mid=(lo+hi)>>1; if(map[mid]>=raw) hi=mid; else lo=mid+1; } return lo; }
+function textPoint(c,k){ const w=document.createTreeWalker(c,NodeFilter.SHOW_TEXT); let n,acc=0; while((n=w.nextNode())){ if(acc+n.length>=k) return {node:n,off:k-acc}; acc+=n.length; } return {node:c,off:c.childNodes.length}; }
+function posFromDom(node,off){
+  if(!node) return null;
+  if(node===editor){ const rows=editor.children; if(!rows.length||!lines.length) return {i:0,off:0}; if(off>=rows.length){ const i=lines.length-1; return {i,off:parseAt(i).body.length}; } return {i:+rows[off].dataset.i,off:0}; }
+  const row=rowOf(node); if(!row) return null; const i=+row.dataset.i; const p=parseAt(i);
+  const c=row.querySelector('.content'); const e=node.nodeType===3?node.parentElement:node;
+  if(node!==c&&!c.contains(node)){ const atEnd=node===row?off>Array.prototype.indexOf.call(row.children,c):!!(c.compareDocumentPosition(e)&Node.DOCUMENT_POSITION_FOLLOWING); return {i,off:atEnd?p.body.length:0}; }
+  const r=document.createRange(); r.setStart(c,0); try{ r.setEnd(node,off); }catch(_){ return {i,off:0}; }
+  const k=r.toString().length, map=mapOf(i);
+  let raw=map[Math.min(k,map.length-1)];
+  const par=node.nodeType===3?node.parentElement:null;
+  if(par&&off===node.length&&!par.classList.contains('due')&&k>0&&k<map.length-1&&map[k]>map[k-1]+1) raw=map[k-1]+1;
+  return {i,off:raw};
+}
+function getSel(){
+  const s=getSelection(); if(!s.rangeCount||!editor.contains(s.anchorNode)||!editor.contains(s.focusNode)) return null;
+  const a=posFromDom(s.anchorNode,s.anchorOffset), f=posFromDom(s.focusNode,s.focusOffset); if(!a||!f) return null;
+  return mkSel(a,f);
+}
+function clampPos(p){ const i=Math.max(0,Math.min(p.i,lines.length-1)); return {i,off:Math.max(0,Math.min(p.off,parseAt(i).body.length))}; }
+function visibleNear(i){ if(!hiddenArr[i]) return i; for(let j=i-1;j>=0;j--) if(!hiddenArr[j]) return j; for(let j=i+1;j<lines.length;j++) if(!hiddenArr[j]) return j; return i; }
+function fixHidden(p){ if(!hiddenArr[p.i]) return p; const j=visibleNear(p.i); return {i:j,off:j<p.i?parseAt(j).body.length:0}; }
+function domPoint(i,off){ const c=contentOf(i); if(!c) return null; return textPoint(c,renderedOffset(mapOf(i),off)); }
+function setSel(a,f,focus=true){
+  if(!lines.length) return; f=f||a; a=fixHidden(clampPos(a)); f=fixHidden(clampPos(f));
+  const s=mkSel(a,f);
+  const A=domPoint(a.i,a.off), F=domPoint(f.i,f.off); if(!A||!F) return;
+  if(focus&&document.activeElement!==editor) editor.focus({preventScroll:true});
+  getSelection().setBaseAndExtent(A.node,A.off,F.node,F.off);
+  lastSel=s;
+  const row=editor.children[f.i]; if(row) row.scrollIntoView({block:'nearest'});
+  if(find.open) updateHighlights(); markOutline();
+}
+function inContent(n){ if(!n) return false; const e=n.nodeType===3?n.parentElement:n; return !!(e&&e.closest&&e.closest('.content')); }
+/* after keyboard navigation the caret row must clear the sticky header; on the first row the page scrolls right to the top */
+let navPending=false;
+function revealCaret(){
+  const s=lastSel; if(!s||editor.hidden) return; const row=editor.children[s.f.i]; if(!row) return;
+  if(s.f.i===nextVisible(-1)){ if(scrollY>0) scrollTo({top:0}); return; }
+  const top=headerEl.offsetHeight+(crumbEl.hidden?0:crumbEl.offsetHeight)+8, r=row.getBoundingClientRect();
+  if(r.top<top) scrollBy(0,r.top-top-8); else if(r.bottom>innerHeight-8) scrollBy(0,r.bottom-innerHeight+16);
+}
+function syncSel(){
+  if(composing) return; const s=getSel(); if(!s) return; lastSel=s; markOutline();
+  if(navPending){ navPending=false; revealCaret(); }
+  /* a caret that landed between rows (gutter, marker, row edge) is snapped back into the nearest content cell */
+  if(!mouseDown&&s.collapsed&&document.activeElement===editor&&!inContent(getSelection().focusNode)) setSel(s.f);
+}
+document.addEventListener('selectionchange',syncSel);
+document.addEventListener('mousedown',e=>{ if(e.button===0) mouseDown=true; });
+document.addEventListener('mouseup',()=>{ mouseDown=false; setTimeout(syncSel,0); });
+window.addEventListener('blur',()=>{ mouseDown=false; });
+
+/* ---------- dirty state and history ---------- */
+function markDirty(){ const d=D(); if(!d.dirty){ d.dirty=true; renderTabs(); } scheduleDraft(); scheduleAutosave(); }
+function setClean(){ D().dirty=false; renderTabs(); scheduleDraft(); }
+function commit(){ render(); markDirty(); }
+function snapshot(){ return {lines:lines.map(l=>({text:l.text,collapsed:l.collapsed})),sel:lastSel}; }
+function pushHistory(){ undo.push(snapshot()); if(undo.length>300) undo.shift(); redo.length=0; typing=false; clearTimeout(typingTimer); }
+function beginTyping(){ if(!typing){ pushHistory(); typing=true; } clearTimeout(typingTimer); typingTimer=setTimeout(()=>{typing=false;},700); }
+function restore(s){ setLines(s.lines.map(l=>({text:l.text,collapsed:l.collapsed}))); commit(); if(s.sel) setSel(s.sel.a,s.sel.f); }
+function doUndo(){ if(!undo.length) return; redo.push(snapshot()); restore(undo.pop()); typing=false; }
+function doRedo(){ if(!redo.length) return; undo.push(snapshot()); restore(redo.pop()); typing=false; }
+
+/* ---------- editing operations ---------- */
+function deleteRange(st,en){
+  if(st.i===en.i){ const p=parseAt(st.i); p.body=p.body.slice(0,st.off)+p.body.slice(en.off); lines[st.i].text=build(p); return st; }
+  const ps=parseAt(st.i), pe=parseAt(en.i); let p;
+  if(st.off===0){ const rest=pe.body.slice(en.off); p=(pe.raw||rest==='')?{type:'p',indent:0,level:0,checked:null,body:rest}:Object.assign(pe,{body:rest}); }
+  else { p=ps; p.body=ps.body.slice(0,st.off)+pe.body.slice(en.off); }
+  lines[st.i].text=build(p); lines[st.i].collapsed=false; lines.splice(st.i+1,en.i-st.i); return st;
+}
+function convertPrefix(p,nb){
+  if(p.raw) return 0; let m=null;
+  if(p.type==='p'&&(m=/^(#{1,6}) /.exec(nb))){ p.type='h'; p.level=m[1].length; p.indent=0; }
+  else if(p.type==='p'&&(m=/^> /.exec(nb))){ p.type='q'; }
+  else if(p.type==='p'&&(m=/^[-*+] /.exec(nb))){ p.type='ul'; }
+  else if(p.type==='p'&&(m=/^(\d+)[.)] /.exec(nb))){ p.type='ol'; p.num=+m[1]; }
+  else if(p.type!=='h'&&p.type!=='q'&&p.checked==null&&(m=/^\[( |x)?\] /i.exec(nb))){ if(p.type==='p') p.type='ul'; p.checked=/x/i.test(m[1]||''); }
+  return m?m[0].length:0;
+}
+function doInsert(rng,text){
+  if(!text){ if(!rng.collapsed){ pushHistory(); const st=deleteRange(rng.start,rng.end); commit(); setSel(st); } return; }
+  const multi=text.includes('\n');
+  if(multi||!rng.collapsed) pushHistory(); else beginTyping();
+  let st=rng.start; if(!rng.collapsed) st=deleteRange(rng.start,rng.end);
+  const p=parseAt(st.i);
+  if(!multi){
+    let nb=p.body.slice(0,st.off)+text+p.body.slice(st.off), caret=st.off+text.length;
+    const ex=/\s$/.test(text)?expandDateBefore(nb,caret,true):null; if(ex){ nb=ex.nb; caret=ex.caret; }
+    const cut=convertPrefix(p,nb);
+    if(cut){ p.body=nb.slice(cut); lines[st.i].text=build(p); typing=false; commit(); setSel({i:st.i,off:Math.max(0,caret-cut)}); return; }
+    p.body=nb; lines[st.i].text=build(p);
+    if(rng.collapsed&&!ex){ renderRow(st.i); markDirty(); } else commit();
+    setSel({i:st.i,off:caret}); return;
+  }
+  const parts=text.split('\n'); const tail=p.body.slice(st.off); p.body=p.body.slice(0,st.off)+parts[0]; lines[st.i].text=build(p);
+  const add=parts.slice(1).map(t=>({text:t,collapsed:false})); add[add.length-1].text+=tail; lines.splice(st.i+1,0,...add);
+  commit(); setSel({i:st.i+add.length,off:parts[parts.length-1].length});
+}
+function doEnter(s){
+  pushHistory(); let st=s.start; if(!s.collapsed) st=deleteRange(s.start,s.end);
+  const i=st.i, p=parseAt(i); let body=p.body;
+  if(!p.raw){ const ex=expandDateBefore(body,st.off,false); if(ex){ body=ex.nb; st={i,off:ex.caret}; } }
+  if(p.type!=='p'&&p.type!=='h'&&!p.raw&&body===''){ if(p.indent>0) p.indent--; else { p.type='p'; p.checked=null; } lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
+  const atEnd=st.off>=body.length, atStart=st.off===0&&body.length>0, folded=lines[i].collapsed&&collapsible(i), secEnd=sectionEnd(i);
+  const np=Object.assign({},p,{body:body.slice(st.off)});
+  p.body=body.slice(0,st.off); lines[i].text=build(p);
+  /* Enter at the very start pushes the whole line down, heading level and check state included, and leaves an empty line of the same kind above it */
+  if(np.type==='h'&&!atStart){ np.type='p'; np.level=0; }
+  if(np.checked!=null&&!atStart) np.checked=false;
+  if(np.type==='ol') np.num=(p.num||0)+1;
+  if(np.raw){ delete np.raw; np.type='p'; np.indent=0; }
+  let at=i+1;
+  if(folded&&atEnd) at=secEnd; else lines[i].collapsed=false;
+  lines.splice(at,0,{text:build(np),collapsed:atStart&&folded});
+  commit(); setSel({i:at,off:0});
+}
+function prevVisible(i){ for(let j=i-1;j>=0;j--) if(!hiddenArr[j]) return j; return -1; }
+function nextVisible(i){ for(let j=i+1;j<lines.length;j++) if(!hiddenArr[j]) return j; return -1; }
+function doBackspaceAtStart(i){
+  const p=parseAt(i);
+  if(!p.raw){
+    if(p.type==='h'){ pushHistory(); p.type='p'; p.level=0; lines[i].text=build(p); lines[i].collapsed=false; commit(); setSel({i,off:0}); return; }
+    /* the checkbox comes off first, with its bullet; a numbered item keeps its number */
+    if(isList(p)&&p.checked!=null){ pushHistory(); dropCheck(p); lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
+    if(p.type!=='p'){ pushHistory(); p.type='p'; p.checked=null; lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
+    if(p.indent>0){ pushHistory(); p.indent--; lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
+  }
+  const j=prevVisible(i); if(j<0) return;
+  const pj=parseAt(j); pushHistory(); const off=pj.body.length; pj.body+=p.body; lines[j].text=build(pj); lines.splice(i,1); commit(); setSel({i:j,off});
+}
+function doDeleteAtEnd(i){
+  const j=nextVisible(i); if(j!==i+1) return;
+  const p=parseAt(i), pj=parseAt(j); pushHistory(); const off=p.body.length; p.body+=pj.body; lines[i].text=build(p); lines.splice(j,1); commit(); setSel({i,off});
+}
+function indentRows(s,d){
+  const rows=[]; for(let i=s.start.i;i<=s.end.i;i++) rows.push(i);
+  const changes=[];
+  for(const i of rows){
+    const p=parseAt(i); if(p.raw) continue;
+    if(p.type==='h'){ const nl=p.level+d; if(nl<1||nl>6) continue; p.level=nl; changes.push([i,p]); continue; }
+    const ni=p.indent+d; if(ni<0||ni>8) continue;
+    if(d>0&&isList(p)&&!rows.includes(i-1)){
+      let j=i-1; while(j>=0&&lines[j].text.trim()==='') j--;
+      if(j<0) continue; const pp=parseAt(j); if(pp.type==='h'||pp.raw||ni>pp.indent+1) continue;
+    }
+    p.indent=ni; changes.push([i,p]);
+  }
+  if(!changes.length) return;
+  pushHistory(); for(const [i,p] of changes) lines[i].text=build(p);
+  commit(); setSel(s.a,s.f);
+}
+function toggleCheckRange(s){
+  const first=parseAt(s.start.i); const val=first.checked==null?false:!first.checked; const ch=[];
+  for(let i=s.start.i;i<=s.end.i;i++){ const p=parseAt(i); if(p.type==='h'||p.raw) continue; if(!isList(p)){ if(p.body===''&&s.start.i!==s.end.i) continue; p.type='ul'; } p.checked=val; ch.push([i,p]); }
+  if(!ch.length) return; pushHistory(); for(const [i,p] of ch) lines[i].text=build(p); commit(); setSel(s.a,s.f);
+}
+/* a checkbox goes on a bullet, so taking it off a bullet leaves a plain line; a numbered item keeps its number */
+function dropCheck(p){ p.checked=null; if(p.type==='ul') p.type='p'; }
+function toggleCheck(i,val,refocus){
+  const p=parseAt(i); if(p.type==='h'||p.raw) return; pushHistory();
+  if(!isList(p)) p.type='ul'; p.checked=val==null?!p.checked:!!val; lines[i].text=build(p); commit();
+  if(refocus&&lastSel) setSel(lastSel.a,lastSel.f);
+}
+/* adds a checkbox to the selected lines, or removes it when the first line already has one */
+function toggleCheckbox(s){
+  const remove=parseAt(s.start.i).checked!=null, ch=[];
+  for(let i=s.start.i;i<=s.end.i;i++){
+    const p=parseAt(i); if(p.type==='h'||p.raw) continue;
+    if(remove){ if(p.checked==null) continue; dropCheck(p); }
+    else { if(p.checked!=null||(p.body===''&&s.start.i!==s.end.i)) continue; if(!isList(p)) p.type='ul'; p.checked=false; }
+    ch.push([i,p]);
+  }
+  if(!ch.length) return; pushHistory(); for(const [i,p] of ch) lines[i].text=build(p); commit(); setSel(s.a,s.f);
+}
+function removeCheckbox(i){ const p=parseAt(i); if(p.checked==null||p.raw) return; pushHistory(); dropCheck(p); lines[i].text=build(p); commit(); if(lastSel) setSel(lastSel.a,lastSel.f,document.activeElement===editor); }
+/* word boundaries for Ctrl+Backspace and Ctrl+Delete: whitespace, then a run of word characters or a run of punctuation */
+const isW=ch=>/[\p{L}\p{N}_]/u.test(ch);
+function wordStart(b,k){ while(k>0&&/\s/.test(b[k-1])) k--; if(k>0&&isW(b[k-1])){ while(k>0&&isW(b[k-1])) k--; } else { while(k>0&&!/\s/.test(b[k-1])&&!isW(b[k-1])) k--; } return k; }
+function wordEnd(b,k){ while(k<b.length&&/\s/.test(b[k])) k++; if(k<b.length&&isW(b[k])){ while(k<b.length&&isW(b[k])) k++; } else { while(k<b.length&&!/\s/.test(b[k])&&!isW(b[k])) k++; } return k; }
+/* a range that touches a date chip grows to cover the whole chip, so chips always go in one piece */
+function withChips(body,a,b){ const re=/@\d{4}-\d{2}-\d{2}(?![\w-])/g; let m; while((m=re.exec(body))){ const ms=m.index, me=ms+m[0].length; if(a<me&&b>ms){ a=Math.min(a,ms); b=Math.max(b,me); } } return [a,b]; }
+function deleteIn(i,a,b){ if(a===b) return; [a,b]=withChips(parseAt(i).body,a,b); pushHistory(); deleteRange({i,off:a},{i,off:b}); commit(); setSel({i,off:a}); acCheck(); }
+function deleteWord(s,dir,toEdge){
+  if(!s.collapsed){ pushHistory(); const st=deleteRange(s.start,s.end); commit(); setSel(st); return; }
+  const i=s.a.i, body=parseAt(i).body, off=s.a.off;
+  if(dir<0){ if(off===0){ doBackspaceAtStart(i); return; } deleteIn(i,toEdge?0:wordStart(body,off),off); }
+  else { if(off>=body.length){ doDeleteAtEnd(i); return; } deleteIn(i,off,toEdge?body.length:wordEnd(body,off)); }
+}
+/* an empty line of the same kind below (or above) the caret's line, without splitting it */
+function insertLine(s,dir){
+  const i=s.f.i, p=parseAt(i); pushHistory();
+  const np={type:p.raw||p.type==='h'||p.type==='q'?'p':p.type,level:0,indent:p.raw?0:p.indent,checked:p.checked==null?null:false,num:(p.num||0)+1,body:''};
+  let at=dir<0?i:spanEnd(i);
+  lines.splice(at,0,{text:build(np),collapsed:false}); commit(); setSel({i:at,off:0});
+}
+function duplicateLines(s){
+  const a=s.start.i, b=spanEnd(s.end.i); pushHistory();
+  lines.splice(b,0,...lines.slice(a,b).map(l=>({text:l.text,collapsed:l.collapsed})));
+  commit(); const d=b-a; setSel({i:s.a.i+d,off:s.a.off},{i:s.f.i+d,off:s.f.off});
+}
+function cyclePri(s,d){
+  const i=s.f.i, p=parseAt(i); if(p.raw) return;
+  const m=RE_PRI.exec(p.body), n=m?m[1].length:0, n2=Math.max(0,Math.min(3,n+d)); if(n===n2) return;
+  pushHistory(); let body=p.body, caret=s.f.i===i?s.f.off:0;
+  if(m){
+    let a=m.index, b=a+m[0].length;
+    if(!n2){ if(a>0&&body[a-1]===' ') a--; else if(body[b]===' ') b++; }
+    body=body.slice(0,a)+'!'.repeat(n2)+body.slice(b);
+    if(caret>a) caret=Math.max(a,caret+body.length-p.body.length);
+  } else { const tr=body.replace(/\s+$/,''); body=tr+(tr?' ':'')+'!'.repeat(n2); }
+  p.body=body; lines[i].text=build(p); commit(); setSel({i,off:Math.min(caret,body.length)});
+}
+function toggleHeading(s,level){
+  const i=s.start.i, p=parseAt(i); if(p.raw) return; pushHistory();
+  if(p.type==='h'&&(level==null||p.level===level)){ p.type='p'; p.level=0; }
+  else if(p.type==='h') p.level=level;
+  else { let lv=level||1; if(!level) for(let j=i-1;j>=0;j--){ const q=parseAt(j); if(q.type==='h'){ lv=q.level; break; } } p.type='h'; p.level=lv; p.indent=0; p.checked=null; }
+  lines[i].text=build(p); lines[i].collapsed=false; commit();
+  const L=p.body.length; setSel({i:s.a.i===i?i:s.a.i,off:Math.min(s.a.off,L)},{i:s.f.i===i?i:s.f.i,off:Math.min(s.f.off,L)});
+}
+function collapseCurrent(s){
+  let j=foldTarget(s.f.i); if(j<0) return;
+  if(lines[j].collapsed){ let k=-1; for(let t=j-1;t>=0;t--) if(collapsible(t)&&sectionEnd(t)>j){ k=t; break; } if(k<0) return; j=k; }
+  lines[j].collapsed=true; render(); scheduleDraft();
+  /* the caret stays put on the heading; from inside the folded section it moves up to the same column */
+  if(s.a.i===j&&s.f.i===j) setSel(s.a,s.f); else setSel({i:j,off:Math.min(s.f.off,parseAt(j).body.length)});
+}
+function expandCurrent(s){
+  const j=s.f.i; if(!(collapsible(j)&&lines[j].collapsed)) return;
+  lines[j].collapsed=false; render(); scheduleDraft(); setSel(s.a,s.f);
+}
+function foldTarget(i){ if(collapsible(i)) return i; for(let j=i-1;j>=0;j--) if(collapsible(j)&&sectionEnd(j)>i) return j; return -1; }
+function toggleFold(j){ lines[j].collapsed=!lines[j].collapsed; render(); scheduleDraft(); }
+function foldCurrent(s){ const j=foldTarget(s.f.i); if(j<0) return; toggleFold(j); if(hiddenArr[s.f.i]) setSel({i:j,off:Math.min(s.f.off,parseAt(j).body.length)}); else setSel(s.a,s.f); }
+function foldAll(){ const collapse=foldState.anyExpanded; for(let i=0;i<lines.length;i++) if(collapsible(i)) lines[i].collapsed=collapse; render(); scheduleDraft(); if(lastSel) setSel(lastSel.a,lastSel.f,document.activeElement===editor); }
+function wrapSel(s,mark){
+  const i=s.start.i, p=parseAt(i); if(p.raw) return;
+  let a=s.start.off, b=(s.end.i===i)?s.end.off:p.body.length; const body=p.body, L=mark.length;
+  if(b-a>L&&body.slice(b-L,b)===mark&&body.slice(a-L,a)===mark&&body.slice(a,a+L)!==mark) b-=L;
+  if(b-a>L&&body.slice(a,a+L)===mark&&body.slice(b,b+L)===mark&&body.slice(b-L,b)!==mark) a+=L;
+  const inner=body.slice(a,b);
+  pushHistory(); let nb,sa,sb;
+  if(inner.length>=2*L&&inner.startsWith(mark)&&inner.endsWith(mark)){ nb=body.slice(0,a)+inner.slice(L,inner.length-L)+body.slice(b); sa=a; sb=b-2*L; }
+  else if(a>=L&&body.slice(a-L,a)===mark&&body.slice(b,b+L)===mark){ nb=body.slice(0,a-L)+inner+body.slice(b+L); sa=a-L; sb=b-L; }
+  else { nb=body.slice(0,a)+mark+inner+mark+body.slice(b); sa=a+L; sb=b+L; }
+  p.body=nb; lines[i].text=build(p); markDirty(); setSel({i,off:sa},{i,off:sb}); renderRow(i); setSel({i,off:sa},{i,off:sb});
+}
+function makeLink(s){
+  const i=s.start.i, p=parseAt(i); if(p.raw) return;
+  const a=s.start.off, b=(s.end.i===i)?s.end.off:p.body.length, t=p.body.slice(a,b);
+  if(s.collapsed){
+    const re=/\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g; let m;
+    while((m=re.exec(p.body))){ if(a>=m.index&&a<=m.index+m[0].length){
+      const url=prompt('Link address (leave empty to remove the link)',m[2]); if(url===null) return;
+      pushHistory(); const rep=url.trim()?'['+m[1]+']('+url.trim()+')':m[1];
+      p.body=p.body.slice(0,m.index)+rep+p.body.slice(m.index+m[0].length); lines[i].text=build(p); markDirty(); renderRow(i); setSel({i,off:m.index+rep.length}); return; } }
+  }
+  pushHistory(); let ins,sa,sb;
+  if(!t){ ins='[text](url)'; sa=a+1; sb=a+5; }
+  else if(/^https?:\/\/\S+$/.test(t)){ ins='[text]('+t+')'; sa=a+1; sb=a+5; }
+  else { ins='['+t+'](url)'; sa=a+t.length+3; sb=sa+3; }
+  p.body=p.body.slice(0,a)+ins+p.body.slice(b); lines[i].text=build(p); markDirty(); renderRow(i); setSel({i,off:sa},{i,off:sb});
+}
+function cycleDue(s){
+  const i=s.start.i, p=parseAt(i); if(p.raw) return;
+  const t0=shiftDate(0), t1=shiftDate(1), t7=shiftDate(7), m=RE_DUE.exec(p.body);
+  pushHistory(); let caret=s.f.i===i?s.f.off:p.body.length;
+  if(m){ const next=m[1]===t0?t1:(m[1]===t1?t7:t0); p.body=p.body.slice(0,m.index)+'@'+next+p.body.slice(m.index+m[0].length); }
+  else { const tr=p.body.replace(/\s+$/,''); p.body=tr+(tr?' ':'')+'@'+t0; caret=p.body.length; }
+  lines[i].text=build(p); markDirty(); renderRow(i); setSel({i,off:Math.min(caret,p.body.length)});
+}
+function setDue(i,st,en,iso){
+  const p=parseAt(i); let s=st, e=en, body=p.body;
+  if(!iso){ if(s>0&&body[s-1]===' ') s--; else if(body[e]===' ') e++; }
+  pushHistory(); p.body=body.slice(0,s)+(iso?'@'+iso:'')+body.slice(e); lines[i].text=build(p); commit();
+  return {s,e:iso?s+iso.length+1:s};
+}
+function rangeText(st,en){
+  if(st.i===en.i) return parseAt(st.i).body.slice(st.off,en.off);
+  const out=[];
+  for(let i=st.i;i<=en.i;i++){
+    const p=parseAt(i), t=lines[i].text, pre=t.slice(0,t.length-p.body.length);
+    if(i===st.i) out.push(st.off===0?t:p.body.slice(st.off));
+    else if(i===en.i) out.push(pre+p.body.slice(0,en.off));
+    else out.push(t);
+  }
+  return out.join('\n');
+}
+/* ---- moving blocks ---- */
+function blockEnd(i){ return collapsible(i)?Math.max(i+1,sectionEnd(i)):i+1; }
+function moveBlock(s,dir){
+  const b0=s.start.i, b1=Math.max(blockEnd(s.end.i),s.end.i+1); let ins;
+  if(dir<0){
+    if(b0===0) return; let k=b0-1;
+    for(let j=b0-1;j>=0;j--){ if(!collapsible(j)) continue; const e=sectionEnd(j); if(e===b0) k=j; else if(e>b0) break; }
+    ins=k;
+  } else { if(b1>=lines.length) return; ins=blockEnd(b1)-(b1-b0); }
+  pushHistory(); const block=lines.splice(b0,b1-b0); lines.splice(ins,0,...block);
+  const d=ins-b0; commit(); setSel({i:s.a.i+d,off:s.a.off},{i:s.f.i+d,off:s.f.off});
+}
+/* ---- sorting a section ---- */
+function plainText(body){ return body.replace(/\[\[|\]\]|[*_~`]+/g,'').replace(/!?\[([^\]]*)\]\([^)]*\)/g,'$1').trim(); }
+function sortSection(s,mode){
+  const i=s.f.i, p=parseAt(i); let from, to;
+  const stops=(q,d)=>q.raw||q.type==='h'||(q.body!==''&&q.indent<d)||(q.type==='p'&&q.body!==''&&q.indent<=d);
+  if(isList(p)){
+    from=i; while(from>0&&!stops(parseAt(from-1),p.indent)) from--;
+    to=i+1; while(to<lines.length&&!stops(parseAt(to),p.indent)) to++;
+  } else {
+    let h=-1; for(let j=i;j>=0;j--) if(parseAt(j).type==='h'){ h=j; break; }
+    from=h+1; to=h>=0?sectionEnd(h):lines.length;
+  }
+  const blank=j=>{ const q=parseAt(j); return q.type==='p'&&q.body===''&&!q.raw; };
+  while(to>from&&blank(to-1)) to--;   /* trailing blank lines stay where they are */
+  const blocks=[]; let j=from;
+  while(j<to){
+    if(blank(j)&&blocks.length){ blocks[blocks.length-1].e=j+1; j++; continue; }
+    let e=collapsible(j)?Math.max(j+1,sectionEnd(j)):j+1; if(e>to) e=to;
+    blocks.push({s:j,e,q:parseAt(j)}); j=e;
+  }
+  if(blocks.length<2) return;
+  const key=b=>{ const q=b.q;
+    if(mode==='date'){ const d=q.raw?null:dueOf(q.body); return {r:d?0:1,t:d||''}; }
+    if(mode==='done') return {r:q.checked===false?0:(q.checked==null?1:2),t:''};
+    if(mode==='pri') return {r:3-(q.raw?0:priOf(q.body)),t:''};
+    return {r:0,t:plainText(q.body).toLowerCase()}; };
+  const order=blocks.map((b,k)=>({b,k,key:key(b)})).sort((x,y)=>x.key.r-y.key.r||x.key.t.localeCompare(y.key.t,undefined,{numeric:mode==='alpha',sensitivity:'base'})||x.k-y.k);
+  if(order.every((o,k)=>o.k===k)) return;
+  pushHistory();
+  const out=[]; let caret=null;
+  for(const o of order){ if(i>=o.b.s&&i<o.b.e) caret=from+out.length+(i-o.b.s); out.push(...lines.slice(o.b.s,o.b.e)); }
+  lines.splice(from,to-from,...out); commit();
+  setSel({i:caret==null?i:caret,off:s.f.off});
+}
+function moveBlockTo(srcRow,tgt,after){
+  const b0=srcRow, b1=blockEnd(srcRow); let ins=after?blockEnd(tgt):tgt;
+  if(ins>=b0&&ins<=b1) return;
+  pushHistory(); const block=lines.splice(b0,b1-b0); if(ins>b1) ins-=(b1-b0); lines.splice(ins,0,...block);
+  commit(); setSel({i:ins,off:0});
+}
+
+/* ---------- editor events ---------- */
+let refocus=false, dragSrc=-1, dropRow=null;
+editor.addEventListener('mousedown',e=>{
+  acHide();
+  const a=e.target.closest('a');
+  if(a&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); if(a.dataset.wiki!=null) openWiki(a.dataset.wiki); else window.open(a.href,'_blank','noopener'); return; }
+  const tg=e.target.closest('.tag');
+  if(tg&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); toggleFilterTag(tg.textContent.slice(1).toLowerCase()); return; }
+  const chip=e.target.closest('.due');
+  if(chip&&e.button===0&&!(e.ctrlKey||e.metaKey)){ e.preventDefault(); openDatePop(chip); return; }
+  if(e.target.closest('.gutter')) refocus=document.activeElement===editor;
+});
+/* caret movement across row edges and over date chips, which the browser cannot do on its own */
+function renderedFocus(c){ const s=getSelection(); if(!s.rangeCount) return null; const n=s.focusNode; if(!n||(n!==c&&!c.contains(n))) return null; const r=document.createRange(); r.setStart(c,0); try{ r.setEnd(n,s.focusOffset); }catch(_){ return null; } return r.toString().length; }
+function chipJump(c,k,dir){
+  for(const ch of c.querySelectorAll('.due')){ const r=document.createRange(); r.setStart(c,0); r.setEndBefore(ch); const rs=r.toString().length, re=rs+ch.textContent.length; if(dir>0&&k>=rs&&k<re) return re; if(dir<0&&k>rs&&k<=re) return rs; }
+  return null;
+}
+function arrowLR(e,s,dir){
+  const i=s.f.i, c=contentOf(i); if(!c) return false;
+  const map=mapOf(i); let k=renderedFocus(c); if(k==null) k=renderedOffset(map,s.f.off);
+  const len=c.textContent.length; let to=null;
+  const cj=chipJump(c,k,dir);
+  if(cj!=null) to={i,off:map[Math.min(cj,map.length-1)]};
+  else if(dir>0&&k>=len){ const j=nextVisible(i); to=j<0?{i,off:parseAt(i).body.length}:{i:j,off:0}; }
+  else if(dir<0&&k<=0){ const j=prevVisible(i); to=j<0?{i,off:0}:{i:j,off:parseAt(j).body.length}; }
+  if(!to) return false;
+  e.preventDefault(); if(e.shiftKey) setSel(s.a,to); else setSel(to); return true;
+}
+editor.addEventListener('click',e=>{
+  if(e.target.type==='checkbox'&&e.altKey){ e.preventDefault(); removeCheckbox(+e.target.closest('.row').dataset.i); return; }
+  const chev=e.target.closest('.chev'); if(!chev) return;
+  const i=+chev.closest('.row').dataset.i, s=lastSel; toggleFold(i);
+  if(refocus&&s){ const f=hiddenArr[s.f.i]?{i,off:Math.min(s.f.off,parseAt(i).body.length)}:s.f; setSel(hiddenArr[s.a.i]?f:s.a,f); }
+});
+editor.addEventListener('change',e=>{ if(e.target.type==='checkbox'){ toggleCheck(+e.target.closest('.row').dataset.i,e.target.checked,refocus); } });
+/* right-click: the common line actions, on the row under the pointer; Shift keeps the browser's menu and its spelling suggestions */
+editor.addEventListener('contextmenu',e=>{
+  if(e.shiftKey||sourceOn) return; e.preventDefault();
+  const row=e.target.closest('.row'), s=getSel();
+  if(row){ const i=+row.dataset.i; if(!s||i<s.start.i||i>s.end.i) setSel({i,off:parseAt(i).body.length}); else lastSel=s; }
+  let x=e.clientX, y=e.clientY;
+  if(!x&&!y){ const r=getSelection().rangeCount?getSelection().getRangeAt(0).getBoundingClientRect():null; if(r&&r.height){ x=r.left; y=r.bottom+4; } }
+  showContextMenu(x,y);
+});
+
+/* drag and drop of rows */
+editor.addEventListener('dragstart',e=>{
+  const h=e.target.closest&&e.target.closest('.handle'); if(!h){ if(e.target.closest&&e.target.closest('.content')) return; e.preventDefault(); return; }
+  dragSrc=+h.closest('.row').dataset.i; e.dataTransfer.setData('text/plain','⠿'); e.dataTransfer.effectAllowed='move'; h.closest('.row').classList.add('dragging');
+});
+function clearDrop(){ if(dropRow){ dropRow.classList.remove('drop-before','drop-after'); dropRow=null; } }
+editor.addEventListener('dragover',e=>{
+  if(dragSrc<0) return; e.preventDefault(); e.dataTransfer.dropEffect='move';
+  const row=e.target.closest&&e.target.closest('.row'); clearDrop(); if(!row) return;
+  const r=row.getBoundingClientRect(); const after=e.clientY>r.top+r.height/2;
+  row.classList.add(after?'drop-after':'drop-before'); dropRow=row;
+});
+editor.addEventListener('dragleave',e=>{ if(!editor.contains(e.relatedTarget)) clearDrop(); });
+editor.addEventListener('drop',e=>{
+  if(dragSrc<0) return; e.preventDefault();
+  const row=e.target.closest&&e.target.closest('.row'); const after=dropRow&&dropRow.classList.contains('drop-after'); clearDrop();
+  const src=dragSrc; dragSrc=-1; editor.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));
+  if(row) moveBlockTo(src,+row.dataset.i,after);
+});
+editor.addEventListener('dragend',()=>{ dragSrc=-1; clearDrop(); editor.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging')); });
+
+editor.addEventListener('beforeinput',e=>{
+  const t=e.inputType;
+  if(t==='insertCompositionText'||t==='deleteCompositionText') return;
+  if(t==='historyUndo'){ e.preventDefault(); doUndo(); return; }
+  if(t==='historyRedo'){ e.preventDefault(); doRedo(); return; }
+  e.preventDefault();
+  if(t==='insertFromDrop'||t==='deleteByDrag'||t==='insertFromPaste'||t==='insertFromYank') return;
+  const s=getSel(); if(!s) return;
+  let rng=s; const trs=e.getTargetRanges?e.getTargetRanges():[];
+  if(trs.length){ const a=posFromDom(trs[0].startContainer,trs[0].startOffset), b=posFromDom(trs[0].endContainer,trs[0].endOffset); if(a&&b) rng=mkSel(a,b); }
+  if(t==='insertParagraph'||t==='insertLineBreak'){ doEnter(s); return; }
+  if(t==='insertText'||t==='insertReplacementText'){ const text=e.data!=null?e.data:(e.dataTransfer?e.dataTransfer.getData('text/plain'):''); doInsert(rng,text.replace(/\r\n?/g,'\n')); acCheck(); return; }
+  if(t.startsWith('delete')){
+    const back=t==='deleteContentBackward'||t==='deleteWordBackward'||t==='deleteSoftLineBackward'||t==='deleteHardLineBackward';
+    if(s.collapsed){
+      const len=parseAt(s.a.i).body.length;
+      if(back&&s.a.off===0){ doBackspaceAtStart(s.a.i); acHide(); return; }
+      if(!back&&s.a.off>=len){ doDeleteAtEnd(s.a.i); acHide(); return; }
+      if(rng.collapsed) rng=back?mkSel({i:s.a.i,off:s.a.off-1},s.a):mkSel(s.a,{i:s.a.i,off:s.a.off+1});
+      if(rng.start.i===rng.end.i){ const body=parseAt(s.a.i).body, re=/@\d{4}-\d{2}-\d{2}(?![\w-])/g; let m; while((m=re.exec(body))){ const ms=m.index, me=ms+m[0].length; if(rng.start.off<me&&rng.end.off>ms){ rng=mkSel({i:s.a.i,off:Math.min(ms,rng.start.off)},{i:s.a.i,off:Math.max(me,rng.end.off)}); break; } } }
+    }
+    if(rng.collapsed) return;
+    pushHistory(); const st=deleteRange(rng.start,rng.end); commit(); setSel(st); acCheck(); return;
+  }
+  if(t==='formatBold'){ wrapSel(s,'**'); return; }
+  if(t==='formatItalic'){ wrapSel(s,'*'); return; }
+});
+editor.addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey;
+  if(ac.open){
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); ac.idx=(ac.idx+(e.key==='ArrowDown'?1:-1)+ac.items.length)%ac.items.length; acRender(); return; }
+    if((e.key==='Enter'||e.key==='Tab')&&!mod){ e.preventDefault(); acAccept(); return; }
+    if(e.key==='Escape'){ e.preventDefault(); acHide(); return; }
+    if(e.key==='ArrowLeft'||e.key==='ArrowRight'||e.key==='Home'||e.key==='End') acHide();
+  }
+  if(e.key==='Escape'&&find.open){ e.preventDefault(); closeFind(); return; }
+  if(e.key==='Escape'&&settings.filter.on){ e.preventDefault(); closeFilter(); return; }
+  const s=getSel(); if(!s) return;
+  if(!mod&&!e.altKey&&/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End)$/.test(e.key)){
+    navPending=true; setTimeout(()=>{ navPending=false; },150);
+    if(e.key==='ArrowUp'&&s.f.i===nextVisible(-1)) requestAnimationFrame(()=>{ if(scrollY>0) scrollTo({top:0}); });
+  }
+  if(mod&&!e.altKey&&(e.key==='Home'||e.key==='End')){
+    e.preventDefault(); const home=e.key==='Home', j=home?nextVisible(-1):prevVisible(lines.length); if(j<0) return;
+    const to={i:j,off:home?0:parseAt(j).body.length}; setSel(e.shiftKey?s.a:to,to); if(home) scrollTo({top:0}); else revealCaret(); return;
+  }
+  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&!mod&&!e.altKey&&(s.collapsed||e.shiftKey)){ if(arrowLR(e,s,e.key==='ArrowRight'?1:-1)) return; }
+  if(e.key==='Enter'&&!mod&&!e.altKey){ e.preventDefault(); doEnter(s); return; }
+  if(e.key==='Enter'&&mod&&!e.altKey){ e.preventDefault(); acHide(); insertLine(s,e.shiftKey?-1:1); return; }
+  if(e.key==='Tab'&&!mod){ e.preventDefault(); indentRows(s,e.shiftKey?-1:1); return; }
+  if(e.key==='Backspace'&&!mod&&!e.altKey&&s.collapsed&&s.a.off===0){ e.preventDefault(); doBackspaceAtStart(s.a.i); return; }
+  if(e.key==='Delete'&&!mod&&!e.altKey&&s.collapsed&&s.a.off>=parseAt(s.a.i).body.length){ e.preventDefault(); doDeleteAtEnd(s.a.i); return; }
+  if((e.key==='Backspace'||e.key==='Delete')&&mod&&!e.altKey){ e.preventDefault(); acHide(); deleteWord(s,e.key==='Backspace'?-1:1,e.shiftKey); return; }
+  if(mod&&e.shiftKey&&!e.altKey&&(e.key==='ArrowUp'||e.key==='ArrowDown')){ e.preventDefault(); cyclePri(s,e.key==='ArrowUp'?1:-1); return; }
+  if(mod&&e.shiftKey&&(e.code==='Space'||e.key===' ')){ e.preventDefault(); toggleCheckbox(s); return; }
+  if(mod&&(e.code==='Space'||e.key===' ')){ e.preventDefault(); toggleCheckRange(s); return; }
+  if(mod&&e.code==='Period'){ e.preventDefault(); if(e.shiftKey) foldAll(); else foldCurrent(s); return; }
+  if(mod&&!e.altKey){
+    const k=e.key.toLowerCase();
+    if(!e.shiftKey&&k==='b'){ e.preventDefault(); wrapSel(s,'**'); return; }
+    if(!e.shiftKey&&k==='i'){ e.preventDefault(); wrapSel(s,'*'); return; }
+    if(!e.shiftKey&&k==='e'){ e.preventDefault(); wrapSel(s,'`'); return; }
+    if(!e.shiftKey&&k==='k'){ e.preventDefault(); makeLink(s); return; }
+    if(e.shiftKey&&k==='x'){ e.preventDefault(); wrapSel(s,'~~'); return; }
+    if(e.shiftKey&&k==='d'){ e.preventDefault(); cycleDue(s); return; }
+    if(e.shiftKey&&k==='h'){ e.preventDefault(); toggleHeading(s); return; }
+    if(e.shiftKey&&/^Digit[1-6]$/.test(e.code)){ e.preventDefault(); toggleHeading(s,+e.code.slice(5)); return; }
+  }
+});
+editor.addEventListener('copy',e=>{ const s=getSel(); if(!s||s.collapsed) return; e.preventDefault(); e.clipboardData.setData('text/plain',rangeText(s.start,s.end)); });
+editor.addEventListener('cut',e=>{ const s=getSel(); if(!s||s.collapsed) return; e.preventDefault(); e.clipboardData.setData('text/plain',rangeText(s.start,s.end)); pushHistory(); const st=deleteRange(s.start,s.end); commit(); setSel(st); });
+editor.addEventListener('paste',e=>{ const s=getSel(); if(!s) return; e.preventDefault(); const text=(e.clipboardData.getData('text/plain')||'').replace(/\r\n?/g,'\n'); if(text) doInsert(s,text); });
+editor.addEventListener('compositionstart',()=>{ composing=true; });
+editor.addEventListener('compositionend',()=>{ composing=false; syncRowFromDom(); });
+editor.addEventListener('input',e=>{ if(composing||(e.inputType&&e.inputType.startsWith('insertComposition'))) return; syncRowFromDom(); });
+function syncRowFromDom(){
+  const s=getSel(); if(!s) return; const i=s.f.i, c=contentOf(i); if(!c) return;
+  const p=parseAt(i), r=rowRender(i), tmp=document.createElement('div'); tmp.innerHTML=r.html;
+  const E=tmp.textContent, A=c.textContent.replace(/\n/g,' ').replace(/ /g,' ');
+  if(E===A) return;
+  let pre=0; while(pre<E.length&&pre<A.length&&E[pre]===A[pre]) pre++;
+  let suf=0; while(suf<E.length-pre&&suf<A.length-pre&&E[E.length-1-suf]===A[A.length-1-suf]) suf++;
+  const rs=r.map[Math.min(pre,r.map.length-1)], re=r.map[Math.min(E.length-suf,r.map.length-1)], insText=A.slice(pre,A.length-suf);
+  beginTyping(); p.body=p.body.slice(0,rs)+insText+p.body.slice(re); lines[i].text=build(p); markDirty();
+  htmlCache.delete(i); renderRow(i); setSel({i,off:rs+insText.length});
+}
+/* clicking beside a row, anywhere out to the page edge, puts the caret at the end of that row */
+appEl.addEventListener('mousedown',e=>{
+  if((e.target!==main&&e.target!==appEl&&e.target!==editor)||sourceOn||e.button!==0) return; e.preventDefault();
+  let at=-1;
+  for(const r of editor.children){ if(r.classList.contains('hidden')) continue; const b=r.getBoundingClientRect(); if(e.clientY>=b.top&&e.clientY<=b.bottom){ at=+r.dataset.i; break; } }
+  if(at<0) for(let i=lines.length-1;i>=0;i--) if(!hiddenArr[i]){ at=i; break; }
+  if(at>=0) setSel({i:at,off:parseAt(at).body.length});
+});
+
+/* ---------- find and replace ---------- */
+function openFind(withReplace){
+  find.open=true; findBar.hidden=false;
+  if(withReplace){ replWrap.hidden=false; replToggle.hidden=true; }
+  const s=lastSel; if(s&&!s.collapsed&&s.start.i===s.end.i) findInput.value=parseAt(s.start.i).body.slice(s.start.off,s.end.off);
+  runFind(true);
+  if(withReplace&&findInput.value) replInput.focus(); else { findInput.focus(); findInput.select(); }
+}
+function closeFind(){
+  find.open=false; findBar.hidden=true; clearHL();
+  const m=find.matches[find.idx];
+  if(m) setSel({i:m.i,off:m.s},{i:m.i,off:m.e}); else if(lastSel) setSel(lastSel.a,lastSel.f); else editor.focus();
+}
+function clearHL(){ if(!HL) return; CSS.highlights.delete('find'); CSS.highlights.delete('find-cur'); }
+function runFind(fromCaret){
+  const q=findInput.value; find.query=q; find.matches=[];
+  if(q){ const nd=find.cs?q:q.toLowerCase(); for(let i=0;i<lines.length;i++){ const b=parseAt(i).body, hay=find.cs?b:b.toLowerCase(); let k=0; while((k=hay.indexOf(nd,k))>=0){ find.matches.push({i,s:k,e:k+q.length}); k+=q.length; } } }
+  if(!find.matches.length) find.idx=-1;
+  else if(fromCaret){ const s=lastSel; let idx=0; if(s){ idx=find.matches.findIndex(m=>m.i>s.start.i||(m.i===s.start.i&&m.s>=s.start.off)); if(idx<0) idx=0; } find.idx=idx; }
+  else find.idx=Math.min(Math.max(find.idx,0),find.matches.length-1);
+  if(find.idx>=0) revealMatch(); updateCount(); updateHighlights();
+}
+function revealMatch(){
+  const m=find.matches[find.idx]; let changed=false;
+  for(let j=m.i-1;j>=0;j--) if(lines[j].collapsed&&collapsible(j)&&sectionEnd(j)>m.i){ lines[j].collapsed=false; changed=true; }
+  if(changed) render();
+  const row=editor.children[m.i]; if(row) row.scrollIntoView({block:'nearest'});
+}
+function updateCount(){ findCount.textContent=find.matches.length?(find.idx+1)+' of '+find.matches.length:(find.query?'No matches':''); }
+function findStep(d){ if(!find.matches.length) return; find.idx=(find.idx+d+find.matches.length)%find.matches.length; revealMatch(); updateCount(); updateHighlights(); }
+function matchRange(m){
+  if(hiddenArr[m.i]) return null; const c=contentOf(m.i); if(!c) return null; const map=mapOf(m.i);
+  const A=textPoint(c,renderedOffset(map,m.s)), B=textPoint(c,renderedOffset(map,m.e)), r=new Range();
+  try{ r.setStart(A.node,A.off); r.setEnd(B.node,B.off); }catch(_){ return null; } return r;
+}
+function updateHighlights(){
+  if(!HL) return; if(!find.open||!find.matches.length){ clearHL(); return; }
+  const all=new Highlight(), curH=new Highlight();
+  find.matches.forEach((m,k)=>{ const r=matchRange(m); if(r) (k===find.idx?curH:all).add(r); });
+  CSS.highlights.set('find',all); CSS.highlights.set('find-cur',curH);
+}
+function replaceOne(){
+  const m=find.matches[find.idx]; if(!m) return; pushHistory();
+  const p=parseAt(m.i), r=replInput.value; p.body=p.body.slice(0,m.s)+r+p.body.slice(m.e); lines[m.i].text=build(p);
+  const pos={i:m.i,off:m.s+r.length}; lastSel=mkSel(pos,pos); commit(); runFind(true);
+}
+function replaceAll(){
+  if(!find.matches.length) return; pushHistory(); const r=replInput.value;
+  const rows=new Set(find.matches.map(m=>m.i));
+  for(const i of rows){ const p=parseAt(i); const ms=find.matches.filter(m=>m.i===i).sort((x,y)=>y.s-x.s); for(const m of ms) p.body=p.body.slice(0,m.s)+r+p.body.slice(m.e); lines[i].text=build(p); }
+  commit(); runFind(true);
+}
+findInput.addEventListener('input',()=>runFind(true));
+findInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); findStep(e.shiftKey?-1:1); } else if(e.key==='Escape'){ e.preventDefault(); closeFind(); } });
+replInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); replaceOne(); } else if(e.key==='Escape'){ e.preventDefault(); closeFind(); } });
+$('findNext').onclick=()=>findStep(1); $('findPrev').onclick=()=>findStep(-1); $('findClose').onclick=closeFind;
+findCaseBtn.onclick=()=>{ find.cs=!find.cs; findCaseBtn.setAttribute('aria-pressed',find.cs); runFind(true); };
+replToggle.onclick=()=>{ replWrap.hidden=false; replToggle.hidden=true; replInput.focus(); };
+$('replOne').onclick=replaceOne; $('replAll').onclick=replaceAll;
+
+/* ---------- filter bar ---------- */
+function setFilter(patch){ Object.assign(settings.filter,patch); render(); restoreSel(); scheduleDraft(); }
+function toggleFilterBar(){ setFilter({on:!settings.filter.on}); }
+function closeFilter(){ setFilter({on:false}); if(document.activeElement!==editor&&lastSel) setSel(lastSel.a,lastSel.f); }
+function toggleFilterTag(t){ const tags=settings.filter.tags.slice(); const k=tags.indexOf(t); if(k>=0) tags.splice(k,1); else tags.push(t); setFilter({on:true,tags}); }
+function renderFilterBar(){
+  const f=settings.filter; filterBar.hidden=!f.on||sourceOn||agendaOn; if(filterBar.hidden) return;
+  fStatus.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===f.status));
+  fDue.value=f.due; fPri.value=f.pri; fParents.setAttribute('aria-pressed',f.parents); fChildren.setAttribute('aria-pressed',f.children); fDim.setAttribute('aria-pressed',f.dim);
+  const tags=allTags(); for(const t of f.tags) if(!tags.some(x=>x.k===t)) tags.push({k:t,label:t,n:0});
+  const frag=document.createDocumentFragment();
+  if(!tags.length){ const e=el('span','none'); e.textContent='none yet'; frag.append(e); }
+  for(const t of tags){ const b=el('button','btn'); b.type='button'; b.dataset.k=t.k; b.textContent='#'+t.label; b.setAttribute('aria-pressed',f.tags.includes(t.k)); b.title=t.n?t.n+(t.n===1?' row':' rows'):'Not in this note'; frag.append(b); }
+  fTags.replaceChildren(frag);
+  fCount.textContent=filterActive()?(filterStats.match?filterStats.match+' of '+filterStats.total:'No matches'):'';
+}
+filterBar.addEventListener('mousedown',e=>{ if(e.target.closest('button')) e.preventDefault(); });
+fStatus.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setFilter({status:b.dataset.v}); });
+fDue.addEventListener('change',()=>{ setFilter({due:fDue.value}); if(lastSel) setSel(lastSel.a,lastSel.f); });
+fPri.addEventListener('change',()=>{ setFilter({pri:fPri.value}); if(lastSel) setSel(lastSel.a,lastSel.f); });
+fTags.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) toggleFilterTag(b.dataset.k); });
+fParents.addEventListener('click',()=>setFilter({parents:!settings.filter.parents}));
+fChildren.addEventListener('click',()=>setFilter({children:!settings.filter.children}));
+fDim.addEventListener('click',()=>setFilter({dim:!settings.filter.dim}));
+$('fClear').addEventListener('click',()=>setFilter(Object.assign({},FILTER_DEFAULTS,{tags:[]})));
+$('fClose').addEventListener('click',closeFilter);
+filterBar.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); closeFilter(); } });
+
+/* ---------- date picker popover ---------- */
+let dpCtx=null;
+function openDatePop(chip){
+  const row=chip.closest('.row'), i=+row.dataset.i, c=row.querySelector('.content');
+  const r=document.createRange(); r.setStart(c,0); r.setEndBefore(chip); const st=mapOf(i)[r.toString().length];
+  dpCtx={i,s:st,e:st+11}; dpInput.value=chip.dataset.iso||'';
+  datePop.hidden=false;
+  const b=chip.getBoundingClientRect(), w=datePop.offsetWidth;
+  datePop.style.left=Math.max(8,Math.min(b.left+scrollX,scrollX+innerWidth-w-8))+'px'; datePop.style.top=(b.bottom+scrollY+4)+'px';
+  dpInput.focus();
+}
+function closeDatePop(restore){
+  if(datePop.hidden) return; datePop.hidden=true; const c=dpCtx; dpCtx=null;
+  if(restore&&c) setSel({i:c.i,off:c.e});
+}
+function applyDate(iso){ const c=dpCtx; if(!c) return; const r=setDue(c.i,c.s,c.e,iso); c.s=r.s; c.e=r.e; }
+dpInput.addEventListener('change',()=>{ if(dpCtx&&dpInput.value) applyDate(dpInput.value); });
+datePop.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='dpRemove'){ applyDate(null); closeDatePop(true); return; }
+  applyDate(shiftDate(+b.dataset.d)); closeDatePop(true);
+});
+datePop.addEventListener('keydown',e=>{ if(e.key==='Escape'||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); closeDatePop(true); } });
+document.addEventListener('mousedown',e=>{ if(!datePop.hidden&&!e.target.closest('#datePop')) closeDatePop(false); },true);
+window.addEventListener('resize',()=>{ closeDatePop(false); acHide(); });
+
+/* ---------- autocomplete for #tags and [[notes]] ---------- */
+const ac={open:false,items:[],idx:0,kind:'',start:0,end:0,i:0};
+function collectTags(){
+  const m=new Map();
+  for(const d of docs) for(const l of d.lines){ RE_TAG.lastIndex=0; let x; while((x=RE_TAG.exec(l.text))){ const k=x[1].toLowerCase(), e=m.get(k); if(e) e.n++; else m.set(k,{k,label:x[1],n:1}); } }
+  return [...m.values()].sort((a,b)=>b.n-a.n||a.k.localeCompare(b.k));
+}
+function noteNames(){
+  const seen=new Set(), out=[];
+  const add=n=>{ const b=n.replace(/\.(md|markdown|txt)$/i,''); const k=b.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(b); } };
+  docs.forEach(d=>add(d.name)); folderNames.forEach(add); return out;
+}
+const DAYS_FULL=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+function usedDates(){ const s=new Set(); for(const d of docs) for(const l of d.lines){ const re=/@(\d{4}-\d{2}-\d{2})(?![\w-])/g; let m; while((m=re.exec(l.text))) s.add(m[1]); } return [...s].sort(); }
+/* after @: the date the typed text already means, dates used in any tab, then the next two weeks; matched on the ISO form, the weekday and words like tomorrow, shown the way the chip will read */
+function dateSuggestions(q){
+  const ql=q.toLowerCase(), out=[], seen=new Set(), today=todayStr();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(ql)) return out;
+  const add=iso=>{ if(seen.has(iso)) return; seen.add(iso); out.push({label:dueLabel(iso),text:'@'+iso+' '}); };
+  if(ql){ const iso=parseDateToken(ql); if(iso) add(iso); }
+  const used=usedDates();
+  for(const iso of used) if(iso>=today&&iso.startsWith(ql)) add(iso);
+  for(let d=0;d<=14;d++){
+    const iso=shiftDate(d), [y,mo,dd]=iso.split('-').map(Number), names=[iso,dueLabel(iso).slice(1).toLowerCase(),DAYS_FULL[new Date(y,mo-1,dd).getDay()]];
+    if(d===7) names.push('next week');
+    if(!ql||names.some(n=>n.startsWith(ql))) add(iso);
+  }
+  if(ql) for(const iso of used) if(iso.startsWith(ql)) add(iso);
+  return out;
+}
+function acCheck(){
+  const s=lastSel; if(!s||!s.collapsed||sourceOn){ acHide(); return; }
+  const i=s.f.i, p=parseAt(i); if(p.raw){ acHide(); return; }
+  const pre=p.body.slice(0,s.f.off), after=p.body.slice(s.f.off); let m, kind, items=[], end=s.f.off;
+  if((m=/\[\[([^\]\n]*)$/.exec(pre))){
+    kind='wiki'; const q=m[1].toLowerCase(); if(after.startsWith(']]')) end+=2;
+    items=noteNames().filter(n=>n.toLowerCase().includes(q)&&n.toLowerCase()!==q).map(n=>({label:n,text:'[['+n+']]'}));
+  } else if((m=/(?<!\S)@([A-Za-z0-9\/\-.]*)$/.exec(pre))){
+    kind='date'; items=dateSuggestions(m[1]);
+  } else if((m=/(?<![\w&#\/])#([A-Za-z_][\w\-\/]*)$/.exec(pre))){
+    kind='tag'; const q=m[1].toLowerCase();
+    items=collectTags().filter(t=>t.k.startsWith(q)&&t.k!==q).map(t=>({label:'#'+t.label,text:'#'+t.label+' ',n:t.n}));
+  } else { acHide(); return; }
+  items=items.slice(0,8); if(!items.length){ acHide(); return; }
+  Object.assign(ac,{open:true,items,idx:0,kind,start:s.f.off-m[0].length,end,i}); acRender(); acPlace();
+}
+function acRender(){
+  acEl.replaceChildren(...ac.items.map((it,k)=>{ const d=el('div','ai'+(k===ac.idx?' sel':'')); d.dataset.k=k; d.setAttribute('role','option'); const t=el('span','t'); t.textContent=it.label; d.append(t); if(it.n){ const n=el('span','n'); n.textContent=it.n; d.append(n); } return d; }));
+  acEl.hidden=false;
+}
+function acPlace(){
+  const sel=getSelection(); let r=sel.rangeCount?sel.getRangeAt(0).getBoundingClientRect():null;
+  if(!r||!r.height){ const row=editor.children[ac.i]; if(!row) return; r=row.getBoundingClientRect(); }
+  const left=Math.max(8,Math.min(r.left+scrollX,scrollX+innerWidth-acEl.offsetWidth-8));
+  acEl.style.left=left+'px'; acEl.style.top=(r.bottom+scrollY+4)+'px';
+}
+function acHide(){ if(!ac.open) return; ac.open=false; acEl.hidden=true; }
+function acAccept(k){
+  const it=ac.items[k==null?ac.idx:k]; const i=ac.i; acHide(); if(!it||!lines[i]) return;
+  const p=parseAt(i); if(p.raw) return;
+  pushHistory(); p.body=p.body.slice(0,ac.start)+it.text+p.body.slice(ac.end); lines[i].text=build(p);
+  markDirty(); renderRow(i); setSel({i,off:ac.start+it.text.length});
+}
+acEl.addEventListener('mousedown',e=>e.preventDefault());
+acEl.addEventListener('click',e=>{ const d=e.target.closest('.ai'); if(d) acAccept(+d.dataset.k); });
+document.addEventListener('mousedown',e=>{ if(ac.open&&!e.target.closest('#ac')) acHide(); },true);
+
+/* ---------- wiki links ---------- */
+async function openWiki(name){
+  const t=wikiTargets(name); if(t.length){ switchTab(docs.indexOf(t[0])); return; }
+  const base=name.replace(/\.md$/i,''), n=base+'.md', text='# '+base+'\n';
+  if(folder&&await folderPerm()){
+    const hit=folderNames.find(f=>f.replace(NOTE_EXT,'').toLowerCase()===base.toLowerCase());
+    if(hit){ openFromFolder(hit); return; }
+    try{ const h=await folder.getFileHandle(n,{create:true}); const w=await h.createWritable(); await w.write(text); await w.close(); newTab(n,text,h); idb.set('handles',D().id,h); addRecent(h,n); listFolder(); return; }
+    catch(e){ console.error(e); }
+  }
+  newTab(n,text);
+}
+
+/* ---------- hover preview of [[links]] ---------- */
+let pvTimer=0, pvLink=null;
+function showPreview(a){
+  const name=a.dataset.wiki, base=name.replace(/\.md$/i,''), t=wikiTargets(name)[0]; pvEl.replaceChildren();
+  const title=el('div','pt'); title.textContent=t?t.name.replace(/\.md$/i,''):base; pvEl.append(title);
+  if(!t){
+    const d=el('div','pvl'), inFolder=folderNames.some(f=>f.replace(NOTE_EXT,'').toLowerCase()===base.toLowerCase());
+    d.textContent=inFolder?'In the notes folder · Ctrl+click to open':'Not open yet · Ctrl+click to create it'; pvEl.append(d);
+  } else {
+    let n=0, total=0;
+    for(const l of t.lines){
+      if(!l.text.trim()) continue; const p=parse(l.text);
+      if(total===0&&n===0&&p.type==='h'&&plainText(p.body).toLowerCase()===title.textContent.toLowerCase()) continue;   /* the note's own title */
+      total++; if(n>=8) continue;
+      const d=el('div','pvl'+(p.type==='h'?' h':'')); d.style.paddingLeft=(p.indent*.9)+'em';
+      d.textContent=(p.checked==null?(isList(p)?'• ':''):(p.checked?'☑ ':'☐ '))+plainText(p.body); pvEl.append(d); n++;
+    }
+    if(!total){ const d=el('div','pvl'); d.textContent='Empty note'; pvEl.append(d); }
+    else if(total>n){ const d=el('div','pvl more'); d.textContent='… '+(total-n)+' more line'+(total-n===1?'':'s'); pvEl.append(d); }
+  }
+  pvEl.hidden=false;
+  const r=a.getBoundingClientRect(), w=pvEl.offsetWidth, h=pvEl.offsetHeight, below=r.bottom+h+12<innerHeight;
+  pvEl.style.left=Math.max(8,Math.min(r.left+scrollX,scrollX+innerWidth-w-8))+'px';
+  pvEl.style.top=(below?r.bottom+scrollY+6:r.top+scrollY-h-6)+'px';
+}
+function hidePreview(){ clearTimeout(pvTimer); pvTimer=0; pvLink=null; pvEl.hidden=true; }
+editor.addEventListener('mouseover',e=>{ const a=e.target.closest&&e.target.closest('a.wiki'); if(!a||a===pvLink) return; hidePreview(); pvLink=a; pvTimer=setTimeout(()=>{ if(pvLink===a) showPreview(a); },350); });
+editor.addEventListener('mouseout',e=>{ const a=e.target.closest&&e.target.closest('a.wiki'); if(a&&a===pvLink) hidePreview(); });
+editor.addEventListener('mousedown',hidePreview); editor.addEventListener('keydown',hidePreview);
+window.addEventListener('scroll',hidePreview,{passive:true});
+
+/* ---------- heading trail: the current section's headings, pinned under the header once they scroll away ---------- */
+let crumbRaf=0;
+function headingChain(i){ const out=[]; let lvl=7; for(let j=i;j>=0&&lvl>1;j--){ const p=parseAt(j); if(p.type==='h'&&p.level<lvl){ out.unshift(j); lvl=p.level; } } return out; }
+function updateCrumb(){
+  crumbRaf=0;
+  if(sourceOn||agendaOn||editor.hidden||!lines.length){ crumbEl.hidden=true; return; }
+  const top=headerEl.offsetHeight, mr=main.getBoundingClientRect(), x=Math.min(mr.left+40,innerWidth-1);
+  let row=null; for(const dy of [2,14,30,60]){ const e=document.elementFromPoint(x,top+dy); row=e&&e.closest?e.closest('.row'):null; if(row) break; }
+  const chain=row?headingChain(+row.dataset.i):[], h=chain[chain.length-1];
+  if(h==null||hiddenArr[h]||editor.children[h].getBoundingClientRect().top>=top-1){ crumbEl.hidden=true; return; }
+  crumbEl.replaceChildren();
+  chain.forEach((j,k)=>{ if(k){ const s=el('span','sep'); s.textContent='›'; crumbEl.append(s); } const b=el(k===chain.length-1?'b':'span'); b.textContent=parseAt(j).body||'(untitled)'; crumbEl.append(b); });
+  crumbEl.dataset.i=h; crumbEl.style.top=top+'px'; crumbEl.style.left=mr.left+'px'; crumbEl.hidden=false;
+}
+function scheduleCrumb(){ if(!crumbRaf) crumbRaf=requestAnimationFrame(updateCrumb); }
+window.addEventListener('scroll',scheduleCrumb,{passive:true}); window.addEventListener('resize',scheduleCrumb);
+crumbEl.addEventListener('click',()=>{ const i=+crumbEl.dataset.i; if(lines[i]) revealRow(i); });
+
+/* ---------- command palette ---------- */
+const pal={open:false,items:[],idx:0};
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+function palCommands(){
+  const out=[];
+  const walk=(items,cat)=>{ let sect=''; for(const it of items){ if(it==='-'){ sect=''; continue; } if(it.h){ sect=it.h; continue; } if(it.dis) continue; if(it.sub){ walk(it.sub(),cat+' › '+it.l); continue; } out.push({cat:cat+(sect?' › '+sect:''),label:it.l,sc:it.sc||'',run:it.f}); } };
+  for(const name of MENU_ORDER) walk(menus[name](),cap(name));
+  docs.forEach((d,k)=>out.push({cat:'Tab',label:d.name,sc:k<9?'Alt+'+(k+1):'',run:()=>switchTab(k)}));
+  lines.forEach((l,i)=>{ const p=parseAt(i); if(p.type==='h') out.push({cat:'Heading',label:p.body||'(untitled)',sc:'',run:()=>revealRow(i)}); });
+  return out;
+}
+/* substring matches rank first, then in-order character matches */
+function fuzzy(q,s){
+  if(!q) return {score:0,idx:[]}; const l=s.toLowerCase(), k=l.indexOf(q);
+  if(k>=0) return {score:(k===0?300:200)-k,idx:Array.from({length:q.length},(_,t)=>k+t)};
+  const idx=[]; let j=0; for(let t=0;t<l.length&&j<q.length;t++) if(l[t]===q[j]){ idx.push(t); j++; }
+  return j===q.length?{score:100-idx[idx.length-1],idx}:null;
+}
+function palRun(){
+  const q=palInput.value.trim().toLowerCase(), scored=[];
+  palCommands().forEach((c,k)=>{ let f=fuzzy(q,c.label); if(!f){ const g=fuzzy(q,c.cat+' '+c.label); if(g) f={score:g.score-150,idx:[]}; } if(f) scored.push({c,f,k}); });
+  scored.sort((a,b)=>b.f.score-a.f.score||a.k-b.k);
+  pal.items=scored.slice(0,14); pal.idx=0; palRender();
+}
+function palRender(){
+  if(!pal.items.length){ const d=el('div','none'); d.textContent='No matching command'; palList.replaceChildren(d); return; }
+  palList.replaceChildren(...pal.items.map((it,k)=>{
+    const d=el('div','pi'+(k===pal.idx?' sel':'')); d.dataset.k=k; d.setAttribute('role','option');
+    const cat=el('span','cat'); cat.textContent=it.c.cat; const lbl=el('span','lbl'), set=new Set(it.f.idx), L=it.c.label;
+    let run='', mode=null; const flush=()=>{ if(!run) return; if(mode){ const mk=el('mark'); mk.textContent=run; lbl.append(mk); } else lbl.append(run); run=''; };
+    for(let t=0;t<L.length;t++){ const m=set.has(t); if(m!==mode){ flush(); mode=m; } run+=L[t]; } flush();
+    const sc=el('span','sc'); sc.textContent=it.c.sc; d.append(cat,lbl,sc); return d;
+  }));
+  const s=palList.querySelector('.sel'); if(s) s.scrollIntoView({block:'nearest'});
+}
+function openPalette(){ hideMenu(); acHide(); closeDatePop(false); hidePreview(); pal.open=true; palEl.hidden=false; palInput.value=''; palRun(); palInput.focus(); }
+function closePalette(refocus){ if(!pal.open) return; pal.open=false; palEl.hidden=true; if(refocus&&lastSel&&!sourceOn&&!agendaOn) setSel(lastSel.a,lastSel.f); }
+function palPick(it){ closePalette(true); if(it) it.c.run(); }
+palInput.addEventListener('input',palRun);
+palInput.addEventListener('keydown',e=>{
+  e.stopPropagation();
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); if(pal.items.length){ pal.idx=(pal.idx+(e.key==='ArrowDown'?1:-1)+pal.items.length)%pal.items.length; palRender(); } }
+  else if(e.key==='Enter'){ e.preventDefault(); palPick(pal.items[pal.idx]); }
+  else if(e.key==='Escape'){ e.preventDefault(); closePalette(true); }
+});
+palList.addEventListener('mousedown',e=>e.preventDefault());
+palList.addEventListener('click',e=>{ const d=e.target.closest('.pi'); if(d) palPick(pal.items[+d.dataset.k]); });
+document.addEventListener('mousedown',e=>{ if(pal.open&&!e.target.closest('#pal')) closePalette(false); },true);
+
+/* ---------- agenda: every open item with a date, from every tab, grouped by day ---------- */
+let agendaOn=false;
+function agendaItems(){
+  const out=[];
+  docs.forEach((d,k)=>{ let inF=false; d.lines.forEach((l,j)=>{
+    if(RE_FENCE.test(l.text)){ inF=!inF; return; } if(inF) return;
+    const p=parse(l.text); if(p.checked!==false) return; const iso=dueOf(p.body); if(iso) out.push({iso,k,j,p,name:d.name});
+  }); });
+  return out.sort((a,b)=>a.iso.localeCompare(b.iso)||a.k-b.k||a.j-b.j);
+}
+function agendaDay(iso,today){ const lab=dueLabel(iso).slice(1); return iso<today?'Overdue · '+lab:lab; }
+function renderAgenda(){
+  if(!agendaOn) return;
+  const items=agendaItems(), today=todayStr(), frag=document.createDocumentFragment();
+  const h=el('h2'); h.textContent='Agenda'; const sub=el('div','sub');
+  sub.textContent=items.length?items.length+' open item'+(items.length===1?'':'s')+' with a date across '+docs.length+' tab'+(docs.length===1?'':'s')+'. Check one off here, or click it to go to it. Esc closes.':'No open items with a date in any tab. Add @today or @fri to a line and it shows up here.';
+  frag.append(h,sub);
+  let last=null;
+  for(const it of items){
+    if(it.iso!==last){ last=it.iso; const dh=el('div','day'+(it.iso<today?' over':it.iso===today?' today':'')); dh.textContent=agendaDay(it.iso,today); dh.title=it.iso; frag.append(dh); }
+    const r=el('div','ag'); r.dataset.k=it.k; r.dataset.j=it.j;
+    const cb=el('input'); cb.type='checkbox'; cb.setAttribute('aria-label','Done');
+    const t=el('div','txt'); t.innerHTML=inline(it.p.body).html; t.title='Go to this line';
+    const src=el('span','src'); src.textContent=it.name.replace(/\.md$/i,'');
+    r.append(cb,t,src); frag.append(r);
+  }
+  agendaEl.replaceChildren(frag);
+}
+function setAgenda(on){
+  if(on===agendaOn) return;
+  if(on&&sourceOn) setSource(false);
+  agendaOn=on; closeDatePop(false); acHide(); hidePreview();
+  if(on){ editor.hidden=true; docTitle.hidden=true; renderAgenda(); agendaEl.hidden=false; renderOutline(); renderBacklinks(); renderFilterBar(); crumbEl.hidden=true; }
+  else { agendaEl.hidden=true; editor.hidden=false; docTitle.hidden=false; render(); if(lastSel) setSel(lastSel.a,lastSel.f); }
+}
+agendaEl.addEventListener('change',e=>{
+  if(e.target.type!=='checkbox') return; const r=e.target.closest('.ag'), k=+r.dataset.k, j=+r.dataset.j, d=docs[k]; if(!d||!d.lines[j]) return;
+  if(k===cur) toggleCheck(j,true,false);
+  else { d.undo.push({lines:d.lines.map(x=>({text:x.text,collapsed:x.collapsed})),sel:d.sel}); const p=parse(d.lines[j].text); p.checked=true; d.lines[j].text=build(p); d.dirty=true; renderTabs(); scheduleDraft(); }
+  setTimeout(renderAgenda,200);
+});
+agendaEl.addEventListener('click',e=>{
+  const t=e.target.closest('.txt'); if(!t) return; const r=t.closest('.ag'), k=+r.dataset.k, j=+r.dataset.j;
+  setAgenda(false); if(k!==cur) switchTab(k); if(lines[j]) revealRow(j);
+});
+
+/* ---------- tabs ---------- */
+function cycleTab(d){ if(docs.length>1) switchTab((cur+d+docs.length)%docs.length); }
+function moveTabTo(k,j){
+  if(k===j||!docs[k]||j<0||j>=docs.length) return;
+  const [x]=docs.splice(k,1); docs.splice(j,0,x);
+  if(cur===k) cur=j; else { if(k<cur) cur--; if(j<=cur) cur++; }
+  renderTabs(); scheduleDraft();
+}
+function moveTab(k,d){ moveTabTo(k,k+d); }
+let tabDrag=-1, tabDrop=null;
+function clearTabDrop(){ if(tabDrop){ tabDrop.classList.remove('drop-l','drop-r'); tabDrop=null; } }
+tabsEl.addEventListener('dragstart',e=>{
+  const t=e.target.closest&&e.target.closest('.tab'); if(!t||t.querySelector('input.rename')){ e.preventDefault(); return; }
+  tabDrag=+t.dataset.k; e.dataTransfer.setData('text/plain',docs[tabDrag].name); e.dataTransfer.effectAllowed='move'; t.classList.add('dragging');
+});
+tabsEl.addEventListener('dragover',e=>{
+  if(tabDrag<0) return; e.preventDefault(); e.dataTransfer.dropEffect='move';
+  const t=e.target.closest&&e.target.closest('.tab'); clearTabDrop(); if(!t) return;
+  const r=t.getBoundingClientRect(); t.classList.add(e.clientX>r.left+r.width/2?'drop-r':'drop-l'); tabDrop=t;
+});
+tabsEl.addEventListener('dragleave',e=>{ if(!tabsEl.contains(e.relatedTarget)) clearTabDrop(); });
+tabsEl.addEventListener('drop',e=>{
+  if(tabDrag<0) return; e.preventDefault();
+  const t=e.target.closest&&e.target.closest('.tab'), right=tabDrop&&tabDrop.classList.contains('drop-r'); clearTabDrop();
+  const src=tabDrag; tabDrag=-1; if(!t) return;
+  let to=+t.dataset.k+(right?1:0); if(to>src) to--; moveTabTo(src,to);
+});
+tabsEl.addEventListener('dragend',()=>{ tabDrag=-1; clearTabDrop(); renderTabs(); });
+function renderTabs(){
+  const frag=document.createDocumentFragment();
+  docs.forEach((d,k)=>{
+    const t=el('div','tab'+(k===cur?' active':'')+(d.dirty?' dirty':'')); t.dataset.k=k; t.title=d.name+' · drag to reorder'; t.setAttribute('role','tab'); t.draggable=true;
+    const n=el('span','tname'); n.textContent=d.name; n.dataset.n=d.name; const dot=el('span','tdot'); const x=el('span','tclose'); x.textContent='×'; x.title='Close (Alt+W)';
+    t.append(n,dot,x); frag.append(t);
+  });
+  const add=el('button','btn tadd'); add.type='button'; add.textContent='+'; add.title='New (Alt+N)'; frag.append(add);
+  tabsEl.replaceChildren(frag); document.title=(D().dirty?'• ':'')+D().name+(ws.name?' · '+ws.name:'')+' · PowerNotes';
+  docTitle.textContent=D().name.replace(NOTE_EXT,'');
+}
+docTitle.addEventListener('dblclick',()=>startRename(cur));
+tabsEl.addEventListener('click',e=>{
+  if(e.target.closest('.tadd')){ newTab(); return; }
+  const t=e.target.closest('.tab'); if(!t) return; const k=+t.dataset.k;
+  if(e.target.closest('.tclose')){ closeTab(k); return; }
+  if(k!==cur) switchTab(k);
+});
+tabsEl.addEventListener('auxclick',e=>{ const t=e.target.closest('.tab'); if(t&&e.button===1){ e.preventDefault(); closeTab(+t.dataset.k); } });
+tabsEl.addEventListener('dblclick',e=>{ const t=e.target.closest('.tab'); if(!t||e.target.closest('.tclose')) return; startRename(+t.dataset.k); });
+function startRename(k){
+  if(k!==cur) switchTab(k);
+  const t=tabsEl.querySelector('.tab.active'), n=t.querySelector('.tname'), inp=el('input','rename'); inp.value=D().name; n.replaceWith(inp); inp.focus(); inp.select();
+  let done=false;
+  const finish=ok=>{ if(done) return; done=true; const v=inp.value.trim(); renderTabs(); if(ok&&v&&v!==D().name) renameDoc(D(),v); };
+  inp.addEventListener('blur',()=>finish(true));
+  inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } });
+}
+/* renames the tab and, when it is a file on disk, the file with it. The browser can rename in place only in some
+   cases; otherwise the file is rewritten under the new name inside its folder and the old one removed, which needs
+   a handle to that folder. The notes folder and folders chosen before are tried first; failing that the user is asked
+   to point at the folder (the picker opens right at it). Every permission request that needs a click gets one. */
+const BAD_NAME=/[\\/:*?"<>|]/;
+async function renameDoc(d,name){
+  const old=d.name, h=d.handle;
+  if(BAD_NAME.test(name)){ alert('A file name cannot contain any of  \\ / : * ? " < > |'); return; }
+  if(h&&!NOTE_EXT.test(name)){ const m=NOTE_EXT.exec(old); name+=m?m[0]:'.md'; }
+  if(name===old) return;
+  const tabOnly=()=>{ d.name=name; d.handle=null; idb.del('handles',d.id); markDirty(); renderBacklinks(); renderTabs(); };
+  if(!h){ tabOnly(); return; }
+  const r=await renameOnDisk(d,name);
+  if(r==='tabonly') tabOnly();
+}
+async function renameOnDisk(d,name){
+  const h=d.handle, old=d.name;
+  const finish=async nh=>{ d.handle=nh; d.name=nh.name||name; idb.set('handles',d.id,nh); renderBacklinks(); renderTabs(); scheduleDraft(); await addRecent(nh,d.name); await dropRecent(old,nh); listFolder(); return 'done'; };
+  /* 1. permission to change the file itself */
+  if(!(await ensurePerm(h,'readwrite'))){
+    const a=await askAccess({title:'Allow access to '+old,msg:'PowerNotes needs your permission to change "'+old+'" before it can rename it on disk.',ok:'Allow access',alt:'Rename tab only'});
+    if(a!=='ok') return a==='alt'?'tabonly':'cancel';
+    if(!(await ensurePerm(h,'readwrite'))){ alert('Access was not granted, so "'+old+'" keeps its name.'); return 'cancel'; }
+  }
+  /* 2. rename in place where the browser supports it */
+  if(typeof h.move==='function'){ try{ await h.move(name); return finish(h); }catch(e){ if(e.name==='AbortError') return 'cancel'; } }
+  /* 3. find the folder that holds the file, asking for it when no known folder does */
+  let parent=await findParent(h), where=null;
+  while(!parent){
+    const a=await askAccess({title:'Choose the folder that contains '+old,
+      msg:where?'"'+old+'" is not inside "'+where+'". Choose the folder that contains it.'
+               :'The browser can only rename a file through its folder. Choose the folder that contains "'+old+'" and PowerNotes will remember it for next time.',
+      hint:'The picker opens at the file\'s location, so you can usually just choose Select Folder.',ok:'Choose folder…',alt:'Rename tab only'});
+    if(a!=='ok') return a==='alt'?'tabonly':'cancel';
+    const r=await pickParent(h); if(!r) return 'cancel';
+    parent=r.parent; where=r.dir.name;
+  }
+  /* 4. write the file under its new name, then remove the old one */
+  try{
+    let exists=null; try{ exists=await parent.getFileHandle(name); }catch(e){}
+    const same=exists?await exists.isSameEntry(h).catch(()=>false):false;
+    if(exists&&!same&&!confirm('"'+name+'" already exists in '+parent.name+'. Replace it?')) return 'cancel';
+    if(d===D()){ if(sourceOn) syncFromSource(); else renumber(); }
+    const nh=await parent.getFileHandle(name,{create:true}); const w=await nh.createWritable(); await w.write(serializeLines(d.lines)); await w.close();
+    if(!same) await parent.removeEntry(h.name);
+    d.dirty=false; return finish(nh);
+  }catch(e){ console.error(e); alert('Could not rename the file: '+e.message); return 'cancel'; }
+}
+/* the directory handle directly containing h, reached from dir, or null */
+async function descend(dir,h){
+  let path=null; try{ path=await dir.resolve(h); }catch(e){ return null; }
+  if(!path) return null;
+  let p=dir; try{ for(const seg of path.slice(0,-1)) p=await p.getDirectoryHandle(seg); }catch(e){ return null; }
+  return p;
+}
+async function knownDirs(){ const v=await idb.get('handles','dirs').catch(()=>null); return Array.isArray(v)?v:[]; }
+async function rememberDir(dir){
+  const dirs=await knownDirs(); for(const k of dirs) if(await k.isSameEntry(dir).catch(()=>false)) return;
+  dirs.unshift(dir); await idb.set('handles','dirs',dirs.slice(0,12));
+}
+/* the notes folder first, then folders granted before; a folder that is not already permitted is asked about,
+   which is fine here because this runs inside the click or keypress that started the rename */
+async function findParent(h){
+  const cands=folder?[folder]:[]; for(const k of await knownDirs()) if(!folder||!(await k.isSameEntry(folder).catch(()=>false))) cands.push(k);
+  for(const dir of cands){ if(await ensurePerm(dir,'readwrite')){ const p=await descend(dir,h); if(p) return p; } }
+  return null;
+}
+/* asks the user for the folder; opens at the file itself. Returns {dir,parent} (parent null when the file is not in dir), or null when cancelled */
+async function pickParent(h){
+  if(!window.showDirectoryPicker){ alert('This browser cannot open folders, so the file keeps its name.'); return null; }
+  let dir=null;
+  try{ dir=await showDirectoryPicker({mode:'readwrite',startIn:h}); }
+  catch(e){ if(e.name==='AbortError') return null; try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e2){ return null; } }
+  rememberDir(dir);
+  const parent=await descend(dir,h);
+  if(parent&&!folder){ folder=dir; folderListed=false; idb.set('handles','folder',dir); listFolder(); }
+  return {dir,parent};
+}
+/* a small modal with a primary action, an optional alternative and Cancel; resolves 'ok', 'alt' or 'cancel'.
+   The button click is what gives the following permission request or picker its user gesture */
+function askAccess({title,msg,hint,ok,alt}){
+  return new Promise(res=>{
+    $('accessTitle').textContent=title; $('accessMsg').textContent=msg;
+    const hp=$('accessHint'); hp.textContent=hint||''; hp.hidden=!hint;
+    const bOk=$('accessOk'), bAlt=$('accessAlt'), bCancel=$('accessCancel'); bOk.textContent=ok; bAlt.textContent=alt||''; bAlt.hidden=!alt;
+    /* settled straight from the buttons and Escape: the dialog's own close event can arrive late in a hidden tab */
+    let settled=false; const fin=v=>{ if(settled) return; settled=true; if(accessDlg.open) accessDlg.close(); res(v); };
+    bOk.onclick=()=>fin('ok'); bAlt.onclick=()=>fin('alt'); bCancel.onclick=()=>fin('cancel');
+    accessDlg.oncancel=e=>{ e.preventDefault(); fin('cancel'); };
+    accessDlg.onclose=()=>{ if(!accessDlg.open) fin('cancel'); };
+    hideMenu(); accessDlg.showModal(); bOk.focus();
+  });
+}
+async function dropRecent(name,keep){
+  await loadRecent();
+  for(const r of recent) if(r.name===name&&!(await r.handle.isSameEntry(keep).catch(()=>false))) await idb.del('recent',r.key);
+  await loadRecent();
+}
+function saveDocState(){ const d=D(); if(!d) return; d.sel=lastSel; d.scroll=window.scrollY; d.undo=undo; d.redo=redo; d.indentUnit=indentUnit; }
+function loadDocState(){ acHide(); const d=D(); lines=d.lines; undo=d.undo; redo=d.redo; indentUnit=d.indentUnit; lastSel=d.sel; render(); renderTabs(); window.scrollTo(0,d.scroll||0); if(find.open) runFind(false); }
+function switchTab(k){ if(k===cur||!docs[k]) return; if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); cur=k; loadDocState(); if(lastSel) setSel(lastSel.a,lastSel.f); scheduleDraft(); }
+function newTab(name,text,handle){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); const d=newDoc(name,text); d.handle=handle||null; d.indentUnit=detectIndent(d.lines); docs.push(d); cur=docs.length-1; loadDocState(); setSel({i:0,off:0}); scheduleDraft(); if(!handle) createInFolder(d); }
+function closeTab(k){
+  const d=docs[k]; if(!d) return;
+  if(d.dirty&&!confirm('Close "'+d.name+'" and discard unsaved changes?')) return;
+  if(sourceOn&&k===cur) setSource(false);
+  if(agendaOn) setAgenda(false);
+  if(k===cur) saveDocState();
+  idb.del('handles',d.id); discardEmpty(d);
+  docs.splice(k,1); if(!docs.length) docs.push(newDoc());
+  if(k<cur) cur--; else if(k===cur) cur=Math.min(k,docs.length-1);
+  loadDocState(); if(lastSel) setSel(lastSel.a,lastSel.f); scheduleDraft();
+}
+function isBlank(d){ return !d.dirty&&!d.handle&&d.lines.length===1&&d.lines[0].text===''; }
+async function sameFile(a,b){ return a===b||(a.name===b.name&&await a.isSameEntry(b).catch(()=>false)); }
+async function openInto(text,name,handle){
+  if(handle){ for(let k=0;k<docs.length;k++){ const h=docs[k].handle; if(h&&await sameFile(h,handle)){ switchTab(k); return; } } }
+  if(isBlank(D())){ const d=D(); d.lines=fromTextRaw(text); d.name=name; d.handle=handle||null; d.undo=[]; d.redo=[]; d.sel=null; d.indentUnit=detectIndent(d.lines); loadDocState(); setSel({i:0,off:0}); scheduleDraft(); }
+  else newTab(name,text,handle);
+  if(handle){ idb.set('handles',D().id,handle); addRecent(handle,name); }
+}
+
+/* ---------- source view ---------- */
+function setSource(on){
+  if(!on) syncFromSource();
+  if(on&&agendaOn) setAgenda(false);
+  sourceOn=on;
+  if(on){ closeDatePop(false); acHide(); hidePreview(); renumber(); src.value=serialize(); editor.hidden=true; src.hidden=false; outlineEl.hidden=true; backEl.hidden=true; filterBar.hidden=true; crumbEl.hidden=true; src.focus(); }
+  else { editor.hidden=false; src.hidden=true; render(); if(lastSel) setSel(lastSel.a,lastSel.f); }
+}
+function syncFromSource(){ if(!sourceOn) return; const t=src.value; if(t===serialize()) return; setLines(fromText(t,true)); indentUnit=detectIndent(lines); }
+src.addEventListener('input',()=>{ markDirty(); clearTimeout(srcTimer); srcTimer=setTimeout(syncFromSource,250); });
+src.addEventListener('keydown',e=>{ if(e.key==='Tab'){ e.preventDefault(); const s=src.selectionStart; src.setRangeText('  ',s,src.selectionEnd,'end'); src.dispatchEvent(new Event('input')); } });
+
+/* ---------- IndexedDB: file handles, recent files and workspaces ---------- */
+const idb={
+  dbp:null,
+  open(){ if(this.dbp) return this.dbp; this.dbp=new Promise((res,rej)=>{ if(!window.indexedDB) return rej(new Error('no idb')); const r=indexedDB.open('mdnotes',2); r.onupgradeneeded=()=>{ const d=r.result; for(const n of ['handles','recent','workspaces']) if(!d.objectStoreNames.contains(n)) d.createObjectStore(n); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return this.dbp; },
+  async op(store,mode,fn){ try{ const db=await this.open(); return await new Promise((res,rej)=>{ const tx=db.transaction(store,mode); const rq=fn(tx.objectStore(store)); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); }); }catch(e){ return undefined; } },
+  get(s,k){ return this.op(s,'readonly',o=>o.get(k)); }, set(s,k,v){ return this.op(s,'readwrite',o=>o.put(v,k)); }, del(s,k){ return this.op(s,'readwrite',o=>o.delete(k)); },
+  all(s){ return this.op(s,'readonly',o=>o.getAll()); }, keys(s){ return this.op(s,'readonly',o=>o.getAllKeys()); }
+};
+let recent=[];
+async function loadRecent(){ const v=await idb.all('recent'); const k=await idb.keys('recent'); recent=(v||[]).map((r,i)=>Object.assign({key:k[i]},r)).filter(r=>r.handle).sort((a,b)=>b.t-a.t); }
+async function addRecent(handle,name){
+  await loadRecent();
+  for(const r of recent){ if(await handle.isSameEntry(r.handle).catch(()=>false)){ await idb.set('recent',r.key,{name,handle,t:Date.now()}); await loadRecent(); return; } }
+  await idb.set('recent',uid(),{name,handle,t:Date.now()});
+  await loadRecent();
+  for(const r of recent.slice(10)) await idb.del('recent',r.key);
+  recent=recent.slice(0,10);
+}
+async function ensurePerm(h,mode){ try{ if((await h.queryPermission({mode}))==='granted') return true; return (await h.requestPermission({mode}))==='granted'; }catch(e){ return false; } }
+async function openRecent(r){
+  if(!(await ensurePerm(r.handle,'read'))) return;
+  try{ const f=await r.handle.getFile(); openInto(await f.text(),f.name,r.handle); }
+  catch(e){ alert('Could not open '+r.name+'. It may have been moved or deleted.'); idb.del('recent',r.key); loadRecent(); }
+}
+
+/* ---------- notes folder ---------- */
+let folder=null, folderNames=[], folderListed=false;
+const NOTE_EXT=/\.(md|markdown|txt)$/i;
+async function pickFolder(){
+  if(!window.showDirectoryPicker){ alert('This browser cannot open folders. Chrome or Edge can.'); return; }
+  try{ folder=await showDirectoryPicker({mode:'readwrite'}); folderListed=false; idb.set('handles','folder',folder); await listFolder(); }
+  catch(e){ if(e.name!=='AbortError') console.error(e); }
+}
+async function listFolder(){
+  folderNames=[]; if(!folder) return;
+  try{ for await(const [name,h] of folder.entries()) if(h.kind==='file'&&NOTE_EXT.test(name)) folderNames.push(name); folderListed=true; }catch(e){}
+  folderNames.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+}
+function closeFolder(){ folder=null; folderNames=[]; folderListed=false; idb.del('handles','folder'); }
+async function folderPerm(){ if(!folder) return false; const ok=await ensurePerm(folder,'readwrite'); if(ok&&!folderListed) await listFolder(); return ok; }
+async function openFromFolder(name){
+  if(!(await folderPerm())) return;
+  try{ const h=await folder.getFileHandle(name); const f=await h.getFile(); openInto(await f.text(),f.name,h); }
+  catch(e){ alert('Could not open '+name+'.'); listFolder(); }
+}
+/* saves the current tab into the folder; true when written, null when the user cancelled, false when there is no folder to use */
+async function saveToFolder(d,text){
+  if(!folder||!(await folderPerm())) return false;
+  let name=d.name;
+  if(!name||/^Untitled(\s*\d*)?\.md$/i.test(name)){ const v=prompt('Save in '+folder.name+' as',name); if(v===null) return null; name=v.trim(); if(!name) return null; if(!NOTE_EXT.test(name)) name+='.md'; }
+  const h=await folder.getFileHandle(name,{create:true}); const w=await h.createWritable(); await w.write(text); await w.close();
+  d.handle=h; d.name=name; idb.set('handles',d.id,h); addRecent(h,name); listFolder(); return true;
+}
+function folderMenu(){
+  if(!folder) return [{l:'Open folder…',f:pickFolder}];
+  const items=[{h:'Folder: '+folder.name}];
+  if(!folderListed) items.push({l:'Show its files',f:async()=>{ if(await folderPerm()) showMenu('file',menubar.querySelector('[data-menu="file"]')); }});
+  else if(!folderNames.length) items.push({l:'No notes in this folder yet',dis:true});
+  else { items.push(...folderNames.slice(0,12).map(n=>({l:n,f:()=>openFromFolder(n)}))); if(folderNames.length>12) items.push({l:'…and '+(folderNames.length-12)+' more, use Open…',dis:true}); }
+  items.push({l:'Change folder…',f:pickFolder},{l:'Close folder',f:closeFolder});
+  return items;
+}
+
+/* ---------- workspaces: a whole folder, or a chosen set of files from anywhere, opened together as tabs ----------
+   A workspace is remembered in IndexedDB as its folder handle (when it was opened from a folder) plus the file handles of
+   the tabs that came from elsewhere. Reopening a folder workspace re-reads the folder, so notes added since come along. */
+let ws={key:null,name:'',dir:null}, workspaces=[];
+const WS_MAX=200, SKIP_DIR=/^(\.|node_modules$|\$RECYCLE)/i;
+async function refreshWorkspaces(){
+  const v=await idb.all('workspaces'), k=await idb.keys('workspaces');
+  workspaces=(v||[]).map((w,i)=>Object.assign({key:k[i]},w)).filter(w=>w&&w.name).sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
+  if(ws.key&&!workspaces.some(w=>w.key===ws.key)) ws.key=null;
+}
+/* every note in dir and its subfolders (hidden folders skipped), files before subfolders, as {path,handle} */
+async function walkDir(dir,out,prefix,depth){
+  if(depth>8||out.length>WS_MAX) return;
+  const files=[], dirs=[]; try{ for await(const h of dir.values()){ if(h.kind==='file'){ if(NOTE_EXT.test(h.name)) files.push(h); } else if(h.kind==='directory'&&!SKIP_DIR.test(h.name)) dirs.push(h); } }catch(e){ return; }
+  const byName=(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});
+  for(const h of files.sort(byName)) out.push({path:prefix+h.name,handle:h});
+  for(const h of dirs.sort(byName)) await walkDir(h,out,prefix+h.name+'/',depth+1);
+}
+async function folderNotes(dir){ const out=[]; await walkDir(dir,out,'',0); return out; }
+/* like ensurePerm, but when the browser wants a fresh click before it will show its prompt (one prompt per click),
+   a small dialog supplies one. true, false, or null when the user cancelled outright */
+async function grantHandle(h,mode,what){
+  try{ if((await h.queryPermission({mode}))==='granted') return true; }catch(e){ return false; }
+  let r=null; try{ r=await h.requestPermission({mode}); }catch(e){}
+  if(r==='granted') return true; if(r==='denied') return false;
+  const a=await askAccess({title:'Allow access to '+h.name,msg:'PowerNotes needs your permission to open '+(what||'"'+h.name+'"')+' from the workspace.',ok:'Allow access',alt:'Skip it'});
+  if(a!=='ok') return a==='alt'?false:null;
+  try{ return (await h.requestPermission({mode}))==='granted'; }catch(e){ return false; }
+}
+/* takes handles or {path,handle} entries from folderNotes; the path says where the file sits in the workspace folder */
+async function readHandles(list){
+  const items=[], failed=[];
+  for(const n of list){ const h=n.handle||n; try{ const f=await h.getFile(); items.push({name:f.name,text:await f.text(),handle:h,path:n.handle?n.path:undefined,mtime:f.lastModified}); }catch(e){ failed.push(h.name); } }
+  return {items,failed};
+}
+/* closes every tab that has nothing unsaved; tabs with changes stay, so nothing is lost */
+function closeCleanTabs(){
+  if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState();
+  for(const d of docs) if(!d.dirty){ idb.del('handles',d.id); discardEmpty(d); }
+  docs=docs.filter(d=>d.dirty); if(!docs.length) docs.push(newDoc()); cur=0; loadDocState();
+}
+/* adds files as tabs in one go (already-open files are skipped, a blank tab gives way) and shows the first of them */
+async function addDocs(items,quiet=true){
+  if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState();
+  const before=docs.slice(); let first=-1;
+  for(const it of items){
+    let dup=-1;
+    if(it.handle) for(let k=0;k<before.length;k++){ const h=before[k].handle; if(h&&await sameFile(h,it.handle)){ dup=k; break; } }
+    if(dup>=0){ if(first<0) first=dup; continue; }
+    const d=newDoc(it.name,it.text); d.handle=it.handle||null; d.indentUnit=detectIndent(d.lines); d.wsPath=it.path; d.mtime=it.mtime; docs.push(d);
+    if(it.handle){ idb.set('handles',d.id,it.handle); if(!quiet) addRecent(it.handle,it.name); }
+    if(first<0) first=docs.length-1;
+  }
+  if(docs.length>1){ const k=docs.findIndex(isBlank); if(k>=0){ idb.del('handles',docs[k].id); docs.splice(k,1); if(first>k) first--; } }
+  cur=Math.max(0,Math.min(first,docs.length-1)); loadDocState(); setSel({i:0,off:0}); scheduleDraft();
+}
+function setWs(key,name,dir){
+  ws={key,name,dir:dir||null}; for(const d of docs) d.wsPath=undefined;
+  if(dir){ idb.set('handles','wsdir',dir); folder=dir; folderListed=false; idb.set('handles','folder',dir); rememberDir(dir); listFolder(); }
+  else idb.del('handles','wsdir');
+  renderTabs(); scheduleDraft(); syncStart();
+}
+/* opens every note in a folder as tabs and makes it the notes folder. Without a handle the folder picker is shown,
+   or, where the browser has none, a plain folder input (the files then open without handles, so Save asks where) */
+async function openFolderWorkspace(dir){
+  if(!dir){
+    if(!window.showDirectoryPicker){ dirInput.value=''; dirInput.click(); return; }
+    try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e){ if(e.name!=='AbortError') console.error(e); return; }
+  } else if(!(await grantHandle(dir,'readwrite','the folder "'+dir.name+'"'))) return;
+  const notes=await folderNotes(dir);
+  if(!(await confirmMany(notes.length,dir.name))) return;
+  const {items,failed}=await readHandles(notes.slice(0,WS_MAX));
+  closeCleanTabs(); setWs(null,dir.name,dir); await addDocs(items);
+  if(failed.length) alert('Could not read '+failed.join(', ')+'.');
+}
+async function confirmMany(n,name){
+  if(n>WS_MAX) return confirm(name+' holds '+n+' notes. Open the first '+WS_MAX+' of them as tabs?');
+  return n<=40||confirm('Open all '+n+' notes in '+name+' as tabs?');
+}
+dirInput.addEventListener('change',async()=>{
+  const ok=f=>NOTE_EXT.test(f.name)&&!/(^|\/)(\.[^/]*|node_modules)\//.test(f.webkitRelativePath||'');
+  const files=[...dirInput.files].filter(ok).sort((a,b)=>a.webkitRelativePath.localeCompare(b.webkitRelativePath,undefined,{numeric:true,sensitivity:'base'}));
+  const root=files.length?files[0].webkitRelativePath.split('/')[0]:'';
+  if(!files.length){ alert('No notes (.md, .markdown or .txt files) in that folder.'); return; }
+  if(!(await confirmMany(files.length,root))) return;
+  const items=[]; for(const f of files.slice(0,WS_MAX)) items.push({name:f.name,text:await f.text(),handle:null});
+  closeCleanTabs(); setWs(null,root,null); await addDocs(items);
+});
+/* the tabs that are files on disk, in tab order, leaving out those inside dir since the folder supplies them itself */
+async function wsFiles(dir){
+  const out=[];
+  for(const d of docs){ if(!d.handle) continue; let inDir=false; if(dir){ try{ inDir=!!(await dir.resolve(d.handle)); }catch(e){} } if(!inDir) out.push(d.handle); }
+  return out;
+}
+async function saveWorkspace(as){
+  const dir=ws.dir, files=await wsFiles(dir), loose=docs.filter(d=>!d.handle&&!isBlank(d));
+  if(!dir&&!files.length){ alert('Nothing to put in a workspace yet: open some files, or save this tab to disk, first.'); return; }
+  if(loose.length){
+    const many=loose.length>1, them=many?'them':'it';
+    const a=await askAccess({title:'Some tabs are not files yet',msg:'"'+loose[0].name+'"'+(many?' and '+(loose.length-1)+' more':'')+' ha'+(many?'ve':'s')+' never been saved to disk, so the workspace cannot bring '+them+' back. Save with Ctrl+S first to keep '+them+'.',ok:'Save workspace anyway'});
+    if(a!=='ok') return;
+  }
+  let key=ws.key, name=ws.name;
+  if(as||!key){
+    const v=prompt('Workspace name',name||(dir?dir.name:'')); if(v===null) return; name=v.trim(); if(!name) return;
+    await refreshWorkspaces(); const dup=workspaces.find(w=>w.name.toLowerCase()===name.toLowerCase());
+    if(dup){ if(dup.key!==ws.key&&!confirm('A workspace called "'+dup.name+'" already exists. Replace it?')) return; key=dup.key; } else key=uid();
+  }
+  await idb.set('workspaces',key,{name,dir:dir||null,files,curName:D().name,t:Date.now()});
+  await refreshWorkspaces(); setWs(key,name,dir);
+}
+async function openWorkspace(w){
+  let handles=[];
+  if(w.dir){ if(!(await grantHandle(w.dir,'readwrite','the folder "'+w.dir.name+'"'))) return; handles=(await folderNotes(w.dir)).slice(0,WS_MAX); }
+  const skipped=[];
+  for(const h of w.files||[]){ const g=await grantHandle(h,'read'); if(g===null) return; if(g) handles.push(h); else skipped.push(h.name); }
+  const {items,failed}=await readHandles(handles);
+  closeCleanTabs(); setWs(w.key,w.name,w.dir||null); await addDocs(items);
+  if(w.curName){ const k=docs.findIndex(d=>d.name===w.curName); if(k>=0) switchTab(k); }
+  const gone=failed.concat(skipped);
+  if(gone.length) alert('Not opened: '+gone.join(', ')+'.'+(failed.length?' Files may have been moved or deleted.':''));
+}
+async function deleteWorkspace(w){
+  if(!confirm('Forget the workspace "'+w.name+'"? Its files stay on disk.')) return;
+  await idb.del('workspaces',w.key); await refreshWorkspaces(); renderTabs(); scheduleDraft();
+}
+function closeWorkspace(){ closeCleanTabs(); setWs(null,'',null); }
+function workspaceMenu(){
+  const items=[];
+  if(ws.name) items.push({h:'Workspace: '+ws.name+(ws.key?'':' (not saved)')});
+  items.push({l:'Open folder as workspace…',f:()=>openFolderWorkspace(null)});
+  if(ws.key) items.push({l:'Save workspace',f:()=>saveWorkspace(false)});
+  items.push({l:ws.key?'Save workspace as…':'Save workspace…',f:()=>saveWorkspace(true)});
+  if(workspaces.length){
+    items.push('-',{h:'Saved workspaces'},...workspaces.slice(0,12).map(w=>({l:w.name,chk:w.key===ws.key,f:()=>openWorkspace(w)})));
+    if(workspaces.length>12) items.push({l:'…and '+(workspaces.length-12)+' more',dis:true});
+    items.push('-',{l:'Forget workspace',sub:()=>workspaces.map(w=>({l:w.name,f:()=>deleteWorkspace(w)}))});
+  } else items.push('-');
+  items.push({l:'Close workspace',f:closeWorkspace,dis:!ws.name});
+  return items;
+}
+
+/* ---------- folder workspace sync ----------
+   Like Obsidian: a new tab in a folder workspace is a file in the folder from the start, edits are written to it as you
+   type, and notes created, changed or removed in the folder by anything else show up in the tabs. Browsers have no
+   file watcher, so the folder is re-read every few seconds while the page is visible, at once when the window gets
+   focus, and on the spot where the browser has FileSystemObserver. */
+let syncTimer=0, syncBusy=false, observer=null, autoTimer=0, autoBusy=false;
+const OBS=typeof FileSystemObserver==='function';
+function syncStart(){
+  syncStop(); if(!ws.dir||!settings.sync) return;
+  if(OBS){ try{ observer=new FileSystemObserver(()=>syncSoon(300)); observer.observe(ws.dir,{recursive:true}).catch(()=>{ observer=null; }); }catch(e){ observer=null; } }
+  syncSoon(500);
+}
+function syncStop(){ clearTimeout(syncTimer); syncTimer=0; if(observer){ try{ observer.disconnect(); }catch(e){} observer=null; } }
+function syncSoon(ms){ if(!ws.dir||!settings.sync) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncFolder,ms); }
+async function pathIn(dir,h){ try{ const p=await dir.resolve(h); return p?p.join('/'):null; }catch(e){ return null; } }
+async function syncFolder(){
+  syncTimer=0; if(!ws.dir||!settings.sync) return;
+  if(syncBusy||document.hidden){ syncSoon(4000); return; }
+  syncBusy=true; const dir=ws.dir;
+  try{
+    if((await dir.queryPermission({mode:'readwrite'}))==='granted'){
+      const notes=await folderNotes(dir), seen=new Set(notes.map(n=>n.path));
+      for(const d of docs) if(d.handle&&d.wsPath===undefined) d.wsPath=await pathIn(dir,d.handle);
+      /* gone from the folder: the tab goes too, unless it holds unsaved changes */
+      for(const d of docs.slice()) if(d.wsPath&&!seen.has(d.wsPath)&&!d.dirty) removeDoc(d);
+      /* new in the folder: a tab at the end, without switching to it */
+      const items=[];
+      for(const n of notes){
+        if(docs.some(d=>d.wsPath===n.path)) continue;
+        let open=false; for(const d of docs) if(d.handle&&await sameFile(d.handle,n.handle)){ d.wsPath=n.path; open=true; break; }
+        if(open) continue;
+        try{ const f=await n.handle.getFile(); items.push({name:f.name,text:await f.text(),handle:n.handle,path:n.path,mtime:f.lastModified}); }catch(e){}
+      }
+      if(items.length) appendDocs(items);
+      /* changed on disk: reloaded, unless the tab holds unsaved changes */
+      for(const d of docs){
+        if(!d.wsPath||d.dirty||!d.handle) continue;
+        let f=null; try{ f=await d.handle.getFile(); }catch(e){ continue; }
+        if(d.mtime==null){ d.mtime=f.lastModified; continue; }
+        if(f.lastModified!==d.mtime&&!d.dirty){ d.mtime=f.lastModified; reloadDoc(d,await f.text()); }
+      }
+    }
+  }catch(e){ console.warn('folder sync',e); }
+  finally{ syncBusy=false; if(ws.dir===dir) syncSoon(observer?20000:4000); }
+}
+function removeDoc(d){
+  const k=docs.indexOf(d); if(k<0) return;
+  if(k===cur){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); }
+  idb.del('handles',d.id); docs.splice(k,1); if(!docs.length) docs.push(newDoc());
+  if(k<cur) cur--; else if(k===cur){ cur=Math.min(k,docs.length-1); loadDocState(); }
+  renderTabs(); renderBacklinks(); scheduleDraft();
+}
+function appendDocs(items){
+  for(const it of items){ const d=newDoc(it.name,it.text); d.handle=it.handle; d.indentUnit=detectIndent(d.lines); d.wsPath=it.path; d.mtime=it.mtime; idb.set('handles',d.id,it.handle); docs.push(d); }
+  renderTabs(); renderBacklinks(); scheduleDraft();
+}
+function reloadDoc(d,text){
+  if(d===D()){
+    setLines(fromText(text,true)); indentUnit=detectIndent(lines);
+    if(sourceOn) src.value=serialize(); else { render(); if(lastSel) lastSel=mkSel(clampPos(lastSel.a),clampPos(lastSel.f)); restoreSel(); }
+  } else { d.lines=fromTextRaw(text); d.indentUnit=detectIndent(d.lines); d.sel=null; }
+  renderBacklinks(); scheduleDraft();
+}
+/* a new tab becomes Untitled.md (or Untitled 2.md, …, or its own name if it was renamed first) in the workspace folder */
+async function createInFolder(d){
+  const dir=ws.dir; if(!dir||d.handle||!settings.sync) return;
+  try{
+    if(!(await ensurePerm(dir,'readwrite'))) return;
+    const taken=new Set(); for await(const nm of dir.keys()) taken.add(nm.toLowerCase());
+    const base=(d.name||'Untitled.md').replace(NOTE_EXT,''), ext=(NOTE_EXT.exec(d.name||'')||['.md'])[0];
+    let name=base+ext, n=1; while(taken.has(name.toLowerCase())) name=base+' '+(++n)+ext;
+    if(d.handle||!docs.includes(d)) return;
+    const text=serializeLines(d.lines), h=await dir.getFileHandle(name,{create:true}), w=await h.createWritable(); await w.write(text); await w.close();
+    d.handle=h; d.name=name; d.wsPath=name; d.mtime=(await h.getFile()).lastModified; d.created=true;
+    if(serializeLines(d.lines)===text) d.dirty=false; else scheduleAutosave();
+    idb.set('handles',d.id,h); renderTabs(); renderBacklinks(); listFolder(); scheduleDraft();
+  }catch(e){ console.warn('create note',e); }
+}
+/* an auto-created note that is still empty and still called Untitled is removed from the folder when its tab closes */
+async function discardEmpty(d){
+  if(!d.created||!d.handle||!ws.dir||!/^Untitled( \d+)?\.(md|markdown|txt)$/i.test(d.name)||serializeLines(d.lines).trim()) return;
+  try{ const p=await ws.dir.resolve(d.handle); if(!p||p.length!==1) return; if(!(await (await d.handle.getFile()).text()).trim()){ await ws.dir.removeEntry(p[0]); listFolder(); } }catch(e){}
+}
+/* edits to files in the workspace folder are written about a second after the last keystroke */
+function scheduleAutosave(){ if(!settings.autosave||!ws.dir) return; clearTimeout(autoTimer); autoTimer=setTimeout(autosave,1000); }
+async function autosave(){
+  autoTimer=0; if(!settings.autosave||!ws.dir) return;
+  if(autoBusy||composing){ scheduleAutosave(); return; }
+  autoBusy=true; let changed=false;
+  try{
+    for(const d of docs){
+      if(!d.dirty||!d.handle) continue;
+      if(d.wsPath===undefined) d.wsPath=await pathIn(ws.dir,d.handle);
+      if(!d.wsPath) continue;
+      try{
+        if((await d.handle.queryPermission({mode:'readwrite'}))!=='granted') continue;
+        if(d===D()&&sourceOn) syncFromSource();
+        const text=serializeLines(d.lines), w=await d.handle.createWritable(); await w.write(text); await w.close();
+        d.mtime=(await d.handle.getFile()).lastModified;
+        if(serializeLines(d.lines)===text){ d.dirty=false; changed=true; } else scheduleAutosave();
+      }catch(e){ console.warn('autosave',e); }
+    }
+  } finally{ autoBusy=false; }
+  if(changed){ renderTabs(); scheduleDraft(); }
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncSoon(200); });
+window.addEventListener('focus',()=>syncSoon(200));
+
+/* ---------- menus ---------- */
+function withSel(fn){ const s=lastSel||mkSel({i:0,off:0},{i:0,off:0}); if(document.activeElement!==editor) setSel(s.a,s.f); fn(getSel()||s); }
+function restoreSel(){ if(lastSel&&document.activeElement===editor) setSel(lastSel.a,lastSel.f); }
+function viewToggle(key){ return ()=>{ settings[key]=!settings[key]; render(); restoreSel(); scheduleDraft(); }; }
+/* the line actions are shared by the Edit menu's Line submenu and the right-click menu */
+const cmd={
+  check:()=>({l:'Check / uncheck',sc:'Ctrl+Space',f:()=>withSel(toggleCheckRange)}),
+  checkbox:()=>({l:'Add / remove checkbox',sc:'Ctrl+Shift+Space',f:()=>withSel(toggleCheckbox)}),
+  heading:()=>({l:'Toggle heading',sc:'Ctrl+Shift+H',f:()=>withSel(s=>toggleHeading(s))}),
+  due:()=>({l:'Due today / tomorrow / next week',sc:'Ctrl+Shift+D',f:()=>withSel(cycleDue)}),
+  priUp:()=>({l:'Raise priority (!, !!, !!!)',sc:'Ctrl+Shift+↑',f:()=>withSel(s=>cyclePri(s,1))}),
+  priDown:()=>({l:'Lower priority',sc:'Ctrl+Shift+↓',f:()=>withSel(s=>cyclePri(s,-1))}),
+  indent:()=>({l:'Indent',sc:'Tab',f:()=>withSel(s=>indentRows(s,1))}),
+  outdent:()=>({l:'Outdent',sc:'Shift+Tab',f:()=>withSel(s=>indentRows(s,-1))}),
+  up:()=>({l:'Move line up',sc:'Alt+↑',f:()=>withSel(s=>moveBlock(s,-1))}),
+  down:()=>({l:'Move line down',sc:'Alt+↓',f:()=>withSel(s=>moveBlock(s,1))}),
+  below:()=>({l:'New line below',sc:'Ctrl+Enter',f:()=>withSel(s=>insertLine(s,1))}),
+  above:()=>({l:'New line above',sc:'Ctrl+Shift+Enter',f:()=>withSel(s=>insertLine(s,-1))}),
+  dup:()=>({l:'Duplicate line',sc:'Ctrl+D',f:()=>withSel(duplicateLines)}),
+  sort:()=>({l:'Sort section',sub:()=>[
+    {l:'By date',f:()=>withSel(s=>sortSection(s,'date'))},
+    {l:'By priority',f:()=>withSel(s=>sortSection(s,'pri'))},
+    {l:'Open items first',f:()=>withSel(s=>sortSection(s,'done'))},
+    {l:'A to Z',f:()=>withSel(s=>sortSection(s,'alpha'))}]}),
+  format:()=>({l:'Format',sub:()=>[
+    {l:'Bold',sc:'Ctrl+B',f:()=>withSel(s=>wrapSel(s,'**'))},
+    {l:'Italic',sc:'Ctrl+I',f:()=>withSel(s=>wrapSel(s,'*'))},
+    {l:'Code',sc:'Ctrl+E',f:()=>withSel(s=>wrapSel(s,'`'))},
+    {l:'Strikethrough',sc:'Ctrl+Shift+X',f:()=>withSel(s=>wrapSel(s,'~~'))},
+    {l:'Link',sc:'Ctrl+K',f:()=>withSel(makeLink)}]}),
+  fold:()=>{ const i=lastSel?lastSel.f.i:0, j=lines[i]?foldTarget(i):-1; return {l:j>=0&&lines[j].collapsed?'Expand':'Collapse',sc:'Ctrl+.',f:()=>withSel(foldCurrent),dis:j<0}; }
+};
+const menus={
+  file:()=>[
+    {l:'New tab',sc:'Alt+N',f:()=>newTab()},
+    {l:'Open…',sc:'Ctrl+O',f:openFile},
+    ...(recent.length?[{h:'Recent files'},...recent.slice(0,8).map(r=>({l:r.name,f:()=>openRecent(r)}))]:[]),
+    {l:'Workspace',sub:workspaceMenu},
+    '-',
+    {l:'Save',sc:'Ctrl+S',f:()=>saveFile(false)},
+    {l:'Save as…',sc:'Ctrl+Shift+S',f:()=>saveFile(true)},
+    {l:'Rename tab',f:()=>startRename(cur)},
+    '-',
+    {l:'Export as HTML…',f:exportHtml},
+    {l:'Print / save as PDF…',sc:'Ctrl+P',f:()=>window.print()},
+    '-',
+    ...folderMenu(),
+    '-',
+    {h:'Tabs'},
+    {l:'Next tab',sc:'Ctrl+Tab',f:()=>cycleTab(1),dis:docs.length<2},
+    {l:'Previous tab',sc:'Ctrl+Shift+Tab',f:()=>cycleTab(-1),dis:docs.length<2},
+    {l:'Move tab left',sc:'Ctrl+Shift+PgUp',f:()=>moveTab(cur,-1),dis:cur===0},
+    {l:'Move tab right',sc:'Ctrl+Shift+PgDn',f:()=>moveTab(cur,1),dis:cur>=docs.length-1},
+    {l:'Close tab',sc:'Alt+W',f:()=>closeTab(cur)},
+    '-',
+    ...(isInstalled()?[]:[{l:'Install app…',f:installApp}]),
+    {l:'Help',sc:'F1',f:toggleHelp}],
+  edit:()=>[
+    {l:'Undo',sc:'Ctrl+Z',f:doUndo,dis:!undo.length},
+    {l:'Redo',sc:'Ctrl+Y',f:doRedo,dis:!redo.length},
+    '-',
+    {l:'Find…',sc:'Ctrl+F',f:()=>openFind(false)},
+    {l:'Replace…',sc:'Ctrl+H',f:()=>openFind(true)},
+    '-',
+    cmd.heading(),
+    cmd.due(),
+    cmd.indent(),
+    cmd.outdent(),
+    '-',
+    {l:'Line',sub:()=>[cmd.check(),cmd.checkbox(),cmd.priUp(),cmd.priDown(),'-',cmd.up(),cmd.down(),cmd.below(),cmd.above(),cmd.dup()]},
+    cmd.sort(),
+    cmd.format()],
+  view:()=>[
+    {l:'Command palette…',sc:'Ctrl+Shift+P',f:openPalette},
+    {l:'Agenda: dated open items from every tab',sc:'Ctrl+Shift+A',chk:agendaOn,f:()=>setAgenda(!agendaOn)},
+    '-',
+    {l:'Outline',sc:'Ctrl+Shift+O',chk:settings.outline,f:viewToggle('outline')},
+    {l:'Indented headings',chk:settings.indentHeadings,f:viewToggle('indentHeadings')},
+    {l:'Source',chk:sourceOn,f:()=>setSource(!sourceOn)},
+    '-',
+    {l:'Filter…',sc:'Ctrl+Shift+F',chk:settings.filter.on,f:toggleFilterBar},
+    {l:'Today: open items due today or earlier',f:()=>setFilter({on:true,status:'open',due:'due',pri:'any',tags:[]})},
+    {l:'Hide done items',chk:settings.hideDone,f:viewToggle('hideDone')},
+    '-',
+    {l:foldState.anyExpanded?'Collapse all':'Expand all',sc:'Ctrl+Shift+.',f:foldAll,dis:!foldState.any},
+    {l:'Collapse current',sc:'Alt+←',f:()=>withSel(collapseCurrent)},
+    {l:'Expand current',sc:'Alt+→',f:()=>withSel(expandCurrent)},
+    '-',
+    {l:'Zoom in',sc:'Ctrl+=',f:()=>setZoom(settings.zoom+0.1)},
+    {l:'Zoom out',sc:'Ctrl+−',f:()=>setZoom(settings.zoom-0.1)},
+    {l:'Reset zoom',sc:'Ctrl+0',f:()=>setZoom(1)},
+    '-',
+    {l:'Settings…',f:openSettings}],
+  context:()=>[
+    cmd.check(),cmd.checkbox(),cmd.due(),cmd.priUp(),cmd.priDown(),cmd.heading(),
+    '-',
+    cmd.indent(),cmd.outdent(),cmd.up(),cmd.down(),cmd.dup(),
+    '-',
+    cmd.format(),cmd.sort(),
+    '-',
+    cmd.fold()]
+};
+const MENU_ORDER=['file','edit','view'];
+let openMenu=null, subTimer=0;
+/* each item gets an access key: the first free letter that starts a word, else any free letter */
+function assignKeys(items){
+  const used=new Set();
+  const pick=(l,wordStart)=>{ for(let k=0;k<l.length;k++){ const c=l[k].toLowerCase(); if(!/[a-z0-9]/.test(c)||used.has(c)) continue; if(!wordStart||k===0||l[k-1]===' ') return k; } return -1; };
+  for(const it of items){ if(it==='-'||it.h) continue; let k=pick(it.l,true); if(k<0) k=pick(it.l,false); it.kpos=k; it.key=k>=0?it.l[k].toLowerCase():''; if(k>=0) used.add(it.key); }
+}
+function buildMenu(items,kb){
+  const box=el('div','menu'+(kb?' kb':'')); box.setAttribute('role','menu'); assignKeys(items);
+  for(const it of items){
+    if(it==='-'){ box.append(el('hr')); continue; }
+    if(it.h){ const h=el('div','mh'); h.textContent=it.h; box.append(h); continue; }
+    const mi=el('div','mi'+(it.dis?' disabled':'')+(it.sub?' has-sub':'')); mi.setAttribute('role','menuitem'); mi._it=it;
+    const chk=el('span','chk'); chk.textContent=it.chk?'✓':''; const lbl=el('span','lbl');
+    if(it.kpos>=0){ const u=el('u'); u.textContent=it.l[it.kpos]; lbl.append(it.l.slice(0,it.kpos),u,it.l.slice(it.kpos+1)); } else lbl.textContent=it.l;
+    const sc=el('span','sc'); sc.textContent=it.sub?'›':(it.sc||'');
+    mi.append(chk,lbl,sc); mi.addEventListener('mousedown',e=>e.preventDefault());
+    if(it.sub){
+      mi.addEventListener('click',()=>openSub(mi,false));
+      mi.addEventListener('mouseenter',()=>{ clearTimeout(subTimer); subTimer=setTimeout(()=>openSub(mi,false),120); });
+      mi.addEventListener('mouseleave',()=>clearTimeout(subTimer));
+    } else {
+      mi.addEventListener('click',()=>{ hideMenu(); it.f(); });
+      /* hovering a sibling of the open submenu's parent closes it, after a moment so a diagonal path into the submenu survives */
+      mi.addEventListener('mouseenter',()=>{ clearTimeout(subTimer); if(openMenu&&openMenu.sub&&openMenu.sub.parent.parentNode===box) subTimer=setTimeout(closeSub,250); });
+    }
+    box.append(mi);
+  }
+  return box;
+}
+function placeFixed(box,x,y){ const w=box.offsetWidth, h=box.offsetHeight; box.style.left=Math.max(4,Math.min(x,innerWidth-w-4))+'px'; box.style.top=Math.max(4,Math.min(y,innerHeight-h-4))+'px'; }
+function focusItem(box,k){ const items=[...box.querySelectorAll('.mi:not(.disabled)')]; items.forEach(x=>x.classList.remove('focus')); const t=items[(k+items.length)%items.length]; if(t){ t.classList.add('focus'); t.scrollIntoView({block:'nearest'}); } }
+function openSub(mi,kb){
+  if(!openMenu||!mi._it.sub) return;
+  if(openMenu.sub){ if(openMenu.sub.parent===mi){ if(kb) focusItem(openMenu.sub.box,0); return; } closeSub(); }
+  const box=buildMenu(mi._it.sub(),kb||openMenu.box.classList.contains('kb')); box.classList.add('sub');
+  box.addEventListener('mouseenter',()=>clearTimeout(subTimer));
+  document.body.append(box);
+  const r=mi.getBoundingClientRect(); let x=r.right-2; if(x+box.offsetWidth>innerWidth-4) x=r.left-box.offsetWidth+2;
+  placeFixed(box,x,r.top-6);
+  mi.classList.add('open'); openMenu.sub={box,parent:mi};
+  if(kb) focusItem(box,0);
+}
+function closeSub(){ clearTimeout(subTimer); const sub=openMenu&&openMenu.sub; if(!sub) return; sub.box.remove(); sub.parent.classList.remove('open'); openMenu.sub=null; }
+function showMenu(name,btn,focusFirst){
+  hideMenu(); const box=buildMenu(menus[name](),focusFirst);
+  box.style.left=btn.offsetLeft+'px'; menubar.append(box); btn.classList.add('open'); openMenu={name,btn,box,sub:null};
+  if(focusFirst) focusItem(box,0);
+}
+function showContextMenu(x,y){
+  hideMenu(); acHide(); closeDatePop(false); hidePreview();
+  const box=buildMenu(menus.context(),false); box.classList.add('ctx'); document.body.append(box); placeFixed(box,x,y);
+  openMenu={name:'context',btn:null,box,sub:null};
+}
+function hideMenu(){ if(!openMenu) return; closeSub(); openMenu.box.remove(); if(openMenu.btn) openMenu.btn.classList.remove('open'); openMenu=null; }
+menubar.addEventListener('mousedown',e=>{ const b=e.target.closest('.mbtn[data-menu]'); if(!b) return; e.preventDefault(); if(openMenu&&openMenu.name===b.dataset.menu) hideMenu(); else showMenu(b.dataset.menu,b); });
+menubar.addEventListener('mouseover',e=>{ const b=e.target.closest('.mbtn[data-menu]'); if(b&&openMenu&&MENU_ORDER.includes(openMenu.name)&&openMenu.name!==b.dataset.menu) showMenu(b.dataset.menu,b); });
+document.addEventListener('mousedown',e=>{ if(openMenu&&!e.target.closest('.menubar,.menu')) hideMenu(); },true);
+function toggleHelp(){ hideMenu(); if(helpDlg.open) helpDlg.close(); else { helpDlg.showModal(); helpDlg.scrollTop=0; } }
+document.addEventListener('keydown',e=>{
+  if(!openMenu) return;
+  const mod=e.ctrlKey||e.metaKey, box=openMenu.sub?openMenu.sub.box:openMenu.box, top=MENU_ORDER.includes(openMenu.name);
+  const items=[...box.querySelectorAll('.mi:not(.disabled)')], idx=items.findIndex(x=>x.classList.contains('focus')), cur=items[idx];
+  const stop=()=>{ e.preventDefault(); e.stopPropagation(); };
+  const switchTop=d=>{ let k=MENU_ORDER.indexOf(openMenu.name); k=(k+d+MENU_ORDER.length)%MENU_ORDER.length; showMenu(MENU_ORDER[k],menubar.querySelector('[data-menu="'+MENU_ORDER[k]+'"]'),true); };
+  const back=()=>{ const p=openMenu.sub.parent; closeSub(); p.classList.add('focus'); };
+  const run=mi=>{ if(mi._it.sub) openSub(mi,true); else mi.click(); };
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ stop(); const d=e.key==='ArrowDown'?1:-1; if(items.length) focusItem(box,idx<0?(d>0?0:-1):idx+d); }
+  else if(e.key==='Home'||e.key==='End'){ stop(); if(items.length) focusItem(box,e.key==='Home'?0:-1); }
+  else if(e.key==='ArrowRight'){ stop(); if(cur&&cur._it.sub) openSub(cur,true); else if(top&&!openMenu.sub) switchTop(1); }
+  else if(e.key==='ArrowLeft'){ stop(); if(openMenu.sub) back(); else if(top) switchTop(-1); }
+  else if(e.key==='Enter'||e.key===' '){ stop(); if(cur) run(cur); }
+  else if(e.key==='Escape'){ stop(); if(openMenu.sub) back(); else hideMenu(); }
+  else if(e.key==='Tab'){ stop(); hideMenu(); }
+  else if(e.altKey&&!mod&&/^[fev]$/i.test(e.key)){ stop(); const name={f:'file',e:'edit',v:'view'}[e.key.toLowerCase()]; showMenu(name,menubar.querySelector('[data-menu="'+name+'"]'),true); }
+  /* the underlined letter runs an item, or opens its submenu */
+  else if(!mod&&e.key.length===1){ stop(); const c=e.key.toLowerCase(), hit=items.find(x=>x._it.key===c); if(hit) run(hit); }
+  else if(!/^(Alt|Shift|Control|Meta)$/.test(e.key)) stop();
+},true);
+document.addEventListener('keydown',e=>{ if(e.key==='Alt') document.body.classList.add('altnav'); });
+document.addEventListener('keyup',e=>{ if(e.key==='Alt') document.body.classList.remove('altnav'); });
+window.addEventListener('blur',()=>document.body.classList.remove('altnav'));
+
+/* ---------- settings ---------- */
+function applySettings(){
+  const root=document.documentElement;
+  if(settings.theme==='system') delete root.dataset.theme; else root.dataset.theme=settings.theme;
+  if(settings.font==='system') delete root.dataset.font; else root.dataset.font=settings.font;
+  editor.spellcheck=!!settings.spell; src.spellcheck=!!settings.spell;
+  const test=$('setSpellTest'); if(settings.lang){ editor.lang=settings.lang; test.lang=settings.lang; } else { editor.removeAttribute('lang'); test.removeAttribute('lang'); }
+}
+function openSettings(){
+  $('setTheme').value=settings.theme; $('setFont').value=settings.font; $('setSpell').value=settings.spell?'on':'off'; $('setLang').value=settings.lang; $('setSync').value=settings.sync?'on':'off'; $('setAutosave').value=settings.autosave?'on':'off';
+  settingsDlg.showModal();
+}
+$('setTheme').addEventListener('change',e=>{ settings.theme=e.target.value; applySettings(); scheduleDraft(); });
+$('setFont').addEventListener('change',e=>{ settings.font=e.target.value; applySettings(); scheduleDraft(); });
+$('setSpell').addEventListener('change',e=>{ settings.spell=e.target.value==='on'; applySettings(); scheduleDraft(); });
+$('setSync').addEventListener('change',e=>{ settings.sync=e.target.value==='on'; syncStart(); scheduleDraft(); });
+$('setAutosave').addEventListener('change',e=>{ settings.autosave=e.target.value==='on'; scheduleAutosave(); scheduleDraft(); });
+$('setLang').addEventListener('change',e=>{ settings.lang=e.target.value.trim(); applySettings(); scheduleDraft(); });
+
+/* ---------- zoom ---------- */
+function setZoom(z){ z=Math.round(Math.max(0.5,Math.min(3,z))*100)/100; settings.zoom=z; document.documentElement.style.setProperty('--zoom',z); scheduleDraft(); }
+/* sticky outline and scroll margins follow the real header height */
+new ResizeObserver(()=>{ document.documentElement.style.setProperty('--hdr',headerEl.offsetHeight+'px'); scheduleCrumb(); }).observe(headerEl);
+window.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); setZoom(settings.zoom+(e.deltaY<0?0.1:-0.1)); } },{passive:false});
+
+/* ---------- global keys ---------- */
+document.addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey;
+  if(e.key==='F1'){ e.preventDefault(); toggleHelp(); return; }
+  if(e.key==='Escape'&&agendaOn&&!pal.open){ e.preventDefault(); setAgenda(false); return; }
+  if(e.altKey&&!mod){
+    const k=e.key.toLowerCase(), inField=e.target.tagName==='INPUT'||e.target===src;
+    if(k==='n'){ e.preventDefault(); newTab(); }
+    else if(k==='w'){ e.preventDefault(); closeTab(cur); }
+    else if(k==='f'||k==='e'||k==='v'){ e.preventDefault(); const name={f:'file',e:'edit',v:'view'}[k]; showMenu(name,menubar.querySelector('[data-menu="'+name+'"]'),true); }
+    else if((e.key==='ArrowUp'||e.key==='ArrowDown')&&!inField&&!sourceOn&&!agendaOn){ e.preventDefault(); withSel(s=>moveBlock(s,e.key==='ArrowUp'?-1:1)); }
+    else if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!inField&&!sourceOn&&!agendaOn){ e.preventDefault(); withSel(s=>e.key==='ArrowLeft'?collapseCurrent(s):expandCurrent(s)); }
+    else if(e.key==='PageUp'||e.key==='PageDown'){ e.preventDefault(); const d=e.key==='PageUp'?-1:1; if(e.shiftKey) moveTab(cur,d); else cycleTab(d); }
+    else if(/^[1-9]$/.test(e.key)&&docs[+e.key-1]){ e.preventDefault(); switchTab(+e.key-1); }
+    return;
+  }
+  if(!mod) return;
+  /* Ctrl+Tab reaches the page only where the browser does not keep it for itself (an installed app, for instance); Alt+PgUp/PgDn always works */
+  if(e.key==='Tab'){ e.preventDefault(); cycleTab(e.shiftKey?-1:1); return; }
+  if(e.key==='PageUp'||e.key==='PageDown'){ if(e.shiftKey){ e.preventDefault(); moveTab(cur,e.key==='PageUp'?-1:1); } return; }
+  const k=e.key.toLowerCase(), inField=e.target.tagName==='INPUT'||e.target===src;
+  if(k==='s'){ e.preventDefault(); saveFile(e.shiftKey); }
+  else if(k==='o'&&!e.shiftKey){ e.preventDefault(); openFile(); }
+  else if(k==='o'&&e.shiftKey){ e.preventDefault(); viewToggle('outline')(); }
+  else if(k==='p'&&!e.shiftKey){ e.preventDefault(); window.print(); }
+  else if(k==='p'&&e.shiftKey){ e.preventDefault(); if(pal.open) closePalette(true); else openPalette(); }
+  else if(k==='a'&&e.shiftKey){ e.preventDefault(); setAgenda(!agendaOn); }
+  else if(k==='d'&&!e.shiftKey&&!inField&&!sourceOn&&!agendaOn){ e.preventDefault(); withSel(duplicateLines); }
+  else if(k==='f'&&!e.shiftKey){ e.preventDefault(); openFind(false); }
+  else if(k==='f'&&e.shiftKey){ e.preventDefault(); toggleFilterBar(); }
+  else if(k==='h'&&!e.shiftKey){ e.preventDefault(); openFind(true); }
+  else if(k==='/'||e.key==='?'){ e.preventDefault(); toggleHelp(); }
+  else if(e.key==='='||e.key==='+'){ e.preventDefault(); setZoom(settings.zoom+0.1); }
+  else if(e.key==='-'||e.key==='_'){ e.preventDefault(); setZoom(settings.zoom-0.1); }
+  else if(e.key==='0'){ e.preventDefault(); setZoom(1); }
+  else if((k==='z'||k==='y')&&!inField){ e.preventDefault(); if(k==='y'||e.shiftKey) doRedo(); else doUndo(); }
+});
+
+/* ---------- files ---------- */
+const TYPES=[{description:'Markdown',accept:{'text/markdown':['.md','.markdown','.txt']}}];
+async function openFile(){
+  if(window.showOpenFilePicker){
+    try{ const hs=await showOpenFilePicker({types:TYPES,multiple:true}); await openHandles(hs); }
+    catch(e){ if(e.name!=='AbortError') console.error(e); }
+  } else { fileInput.value=''; fileInput.click(); }
+}
+fileInput.addEventListener('change',async()=>{ for(const f of [...fileInput.files]) await openInto(await f.text(),f.name,null); });
+/* one file opens into the current blank tab or a new one; several open as tabs in one go */
+async function openHandles(hs){
+  if(hs.length===1){ const f=await hs[0].getFile(); await openInto(await f.text(),f.name,hs[0]); return; }
+  const {items,failed}=await readHandles(hs); await addDocs(items,false);
+  if(failed.length) alert('Could not open '+failed.join(', ')+'.');
+}
+async function saveFile(as){
+  if(sourceOn) syncFromSource(); else renumber();
+  const text=serialize(), d=D();
+  if(window.showSaveFilePicker){
+    try{
+      if(d.handle&&!as&&!(await ensurePerm(d.handle,'readwrite'))) as=true;
+      if(!d.handle&&!as&&folder){ const r=await saveToFolder(d,text); if(r===null) return; if(r){ d.dirty=false; renderTabs(); scheduleDraft(); return; } }
+      if(!d.handle||as){ d.handle=await showSaveFilePicker({suggestedName:d.name,types:TYPES}); d.name=d.handle.name; idb.set('handles',d.id,d.handle); addRecent(d.handle,d.name); }
+      const w=await d.handle.createWritable(); await w.write(text); await w.close();
+      d.dirty=false; renderTabs(); scheduleDraft();
+    }catch(e){ if(e.name!=='AbortError'){ console.error(e); alert('Could not save: '+e.message); } }
+  } else {
+    download(d.name,text,'text/markdown'); d.dirty=false; renderTabs(); scheduleDraft();
+  }
+}
+function download(name,text,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+document.addEventListener('dragover',e=>{ if([...e.dataTransfer.types].includes('Files')){ e.preventDefault(); document.body.classList.add('drag'); } });
+document.addEventListener('dragleave',e=>{ if(!e.relatedTarget) document.body.classList.remove('drag'); });
+document.addEventListener('drop',async e=>{
+  document.body.classList.remove('drag');
+  const files=[...(e.dataTransfer.files||[])]; if(!files.length) return;
+  e.preventDefault();
+  /* handles must be requested before the first await, while the drop data is still live */
+  const hps=[...(e.dataTransfer.items||[])].map(it=>it&&it.getAsFileSystemHandle?it.getAsFileSystemHandle().catch(()=>null):null);
+  const items=[];
+  for(let k=0;k<files.length;k++){
+    const h=hps[k]?await hps[k]:null;
+    if(h&&h.kind==='directory'){ await openFolderWorkspace(h); continue; }
+    items.push({name:files[k].name,text:await files[k].text(),handle:h&&h.kind==='file'?h:null});
+  }
+  if(items.length===1) await openInto(items[0].text,items[0].name,items[0].handle);
+  else if(items.length) await addDocs(items,false);
+});
+
+/* ---------- export ---------- */
+function docToHtml(){
+  renumber();
+  const out=[], stack=[]; let inCode=false;
+  const closeLists=to=>{ while(stack.length&&stack[stack.length-1].indent>=to) out.push(stack.pop().type==='ol'?'</ol>':'</ul>'); };
+  for(let i=0;i<lines.length;i++){
+    const p=parseAt(i), t=lines[i].text;
+    if(p.raw){ if(RE_FENCE.test(t)){ closeLists(0); if(!inCode){ out.push('<pre><code>'); inCode=true; } else { out.push('</code></pre>'); inCode=false; } } else out.push(esc(t)+'\n'); continue; }
+    if(p.type==='h'){ closeLists(0); out.push('<h'+p.level+'>'+inline(p.body).html+'</h'+p.level+'>'); continue; }
+    if(isList(p)){
+      while(stack.length&&stack[stack.length-1].indent>p.indent) out.push(stack.pop().type==='ol'?'</ol>':'</ul>');
+      if(!stack.length||stack[stack.length-1].indent<p.indent){ stack.push({type:p.type,indent:p.indent}); out.push(p.type==='ol'?'<ol>':'<ul>'); }
+      else if(stack[stack.length-1].type!==p.type){ out.push(stack.pop().type==='ol'?'</ol>':'</ul>'); stack.push({type:p.type,indent:p.indent}); out.push(p.type==='ol'?'<ol>':'<ul>'); }
+      const cb=p.checked==null?'':'<input type="checkbox" disabled'+(p.checked?' checked':'')+'> ';
+      out.push('<li'+(p.checked?' class="done"':'')+'>'+cb+inline(p.body).html+'</li>'); continue;
+    }
+    if(p.type==='q'){ closeLists(0); out.push('<blockquote>'+inline(p.body).html+'</blockquote>'); continue; }
+    if(p.body===''){ continue; }
+    closeLists(0); out.push('<p>'+inline(p.body).html+'</p>');
+  }
+  closeLists(0); if(inCode) out.push('</code></pre>');
+  const css='body{max-width:44rem;margin:2rem auto;padding:0 1rem;font:16px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#1f2328}h1,h2,h3{line-height:1.25}li.done{color:#6b7280}code{background:#eceef1;padding:.05em .3em;border-radius:4px;font-size:.92em}pre{background:#eceef1;padding:.8em 1em;border-radius:8px;overflow:auto}pre code{background:none;padding:0}blockquote{border-left:3px solid #e5e7eb;margin:0;padding-left:.8em;color:#6b7280}.due,.tag{font-size:.8em;padding:0 .45em;border-radius:1em;background:#eceef1;color:#6b7280}.due.over{color:#cf5a52}.due.today{color:#4b7cd6}.pri{font-size:.75em;font-weight:700;padding:0 .5em;border-radius:1em;color:#b98a2c;background:#f5efe0}.pri.p2{color:#cf5a52;background:#f9e7e5}.pri.p3{color:#fff;background:#cf5a52}a{color:#4b7cd6}a.wiki{text-decoration:none;border-bottom:1px dashed}';
+  return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>'+esc(D().name.replace(/\.md$/i,''))+'</title><style>'+css+'</style></head><body>\n'+out.join('\n')+'\n</body></html>\n';
+}
+function exportHtml(){ download(D().name.replace(/\.md$/i,'')+'.html',docToHtml(),'text/html'); }
+
+/* ---------- persistence and init ---------- */
+function scheduleDraft(){ clearTimeout(draftTimer); draftTimer=setTimeout(saveDraft,300); }
+function saveDraft(){
+  try{ localStorage.setItem(KEY,JSON.stringify({cur,settings,ws:{key:ws.key,name:ws.name},
+    docs:docs.map(d=>({id:d.id,name:d.name,text:serializeLines(d.lines),collapsed:d.lines.map((l,i)=>l.collapsed?i:-1).filter(i=>i>=0),dirty:d.dirty,created:d.created||undefined}))})); }catch(e){}
+}
+function loadDraft(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY)); if(!s||!Array.isArray(s.docs)||!s.docs.length) return false;
+    docs=s.docs.map(x=>{ const d=newDoc(x.name,x.text); if(x.id) d.id=x.id; (x.collapsed||[]).forEach(i=>{ if(d.lines[i]) d.lines[i].collapsed=true; }); d.dirty=!!x.dirty; d.created=!!x.created; d.indentUnit=detectIndent(d.lines); return d; });
+    cur=Math.min(s.cur||0,docs.length-1);
+    const st=s.settings||s; for(const k of Object.keys(settings)) if(k!=='filter'&&st[k]!==undefined&&typeof st[k]===typeof settings[k]) settings[k]=st[k];
+    const f=Object.assign({on:false},FILTER_DEFAULTS,(st.filter&&typeof st.filter==='object')?st.filter:{});
+    if(!Array.isArray(f.tags)) f.tags=[]; f.tags=f.tags.filter(t=>typeof t==='string');
+    if(!['all','open','done'].includes(f.status)) f.status='all';
+    if(!['any','due','overdue','today','week','has','none'].includes(f.due)) f.due='any';
+    if(!['any','1','2','3'].includes(f.pri)) f.pri='any';
+    if(st.today===true){ f.on=true; f.status='open'; f.due='due'; }
+    settings.filter=f;
+    if(s.ws&&typeof s.ws==='object'){ ws.key=typeof s.ws.key==='string'?s.ws.key:null; ws.name=typeof s.ws.name==='string'?s.ws.name:''; }
+    return true;
+  }catch(e){ return false; }
+}
+async function init(){
+  if(!loadDraft()){
+    let old=null; try{ old=JSON.parse(localStorage.getItem(OLDKEY)); }catch(e){}
+    if(old&&typeof old.text==='string'){ const d=newDoc(old.name,old.text); d.dirty=!!old.dirty; d.indentUnit=detectIndent(d.lines); docs=[d]; }
+    else docs=[newDoc('Welcome.md',WELCOME)];
+    cur=0;
+  }
+  applySettings(); setZoom(settings.zoom); loadDocState();
+  for(const d of docs){ idb.get('handles',d.id).then(h=>{ if(h) d.handle=h; }); }
+  idb.get('handles','folder').then(async h=>{ if(!h) return; folder=h; try{ if((await h.queryPermission({mode:'readwrite'}))==='granted') await listFolder(); }catch(e){} });
+  loadRecent();
+  idb.get('handles','wsdir').then(h=>{ if(h&&ws.name){ ws.dir=h; syncStart(); } });
+  refreshWorkspaces().then(renderTabs);
+}
+init();
+
+/* ---------- PWA: offline shell, file handling, shortcuts ---------- */
+if("serviceWorker" in navigator&&location.protocol!=="file:"){
+  window.addEventListener("load",async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register("sw.js");
+      // A new version is applied as soon as it is ready; the page only reloads when nothing is unsaved
+      // (drafts are already in localStorage, so a reload never loses work either way).
+      const promote=w=>{ if(w) w.postMessage({type:"SKIP_WAITING"}); };
+      promote(reg.waiting);
+      reg.addEventListener("updatefound",()=>{ const w=reg.installing; if(!w) return; w.addEventListener("statechange",()=>{ if(w.state==="installed"&&navigator.serviceWorker.controller) promote(w); }); });
+      let reloaded=false;
+      navigator.serviceWorker.addEventListener("controllerchange",()=>{ if(reloaded) return; reloaded=true; if(!docs.some(d=>d.dirty)) location.reload(); });
+    }catch(e){ console.warn("Service worker not registered:",e); }
+  });
+}
+// File › Install app… uses the browser's install prompt when one has been offered; otherwise it explains how to install here.
+let installPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installPrompt=e; });
+window.addEventListener("appinstalled",()=>{ installPrompt=null; });
+function isInstalled(){ return matchMedia("(display-mode: standalone)").matches||matchMedia("(display-mode: window-controls-overlay)").matches||navigator.standalone===true; }
+async function installApp(){
+  const p=installPrompt;
+  if(p){ installPrompt=null; try{ await p.prompt(); const {outcome}=await p.userChoice; if(outcome!=="accepted") installPrompt=p; }catch(e){ console.warn(e); } return; }
+  if(location.protocol==="file:"){ alert("Installing needs PowerNotes served from a web server over https or localhost, not opened from a file. Any static server works, then use File › Install app… from there."); return; }
+  const ua=navigator.userAgent, safari=/Safari/.test(ua)&&!/Chrom|Edg/.test(ua), firefox=/Firefox/.test(ua);
+  alert(safari?"In Safari, use Share › Add to Dock (Mac) or Add to Home Screen (iPhone and iPad) to install PowerNotes."
+    :firefox?"Firefox on desktop does not install web apps. On Android, use the browser menu › Install."
+    :"Your browser has not offered to install yet. Look for the install icon at the right end of the address bar, or use the browser menu › Save and share › Install PowerNotes. If PowerNotes is already installed, open it from your apps instead.");
+}
+// Files opened from the OS (manifest file_handlers) arrive here with a live handle, so Save writes back to disk.
+if("launchQueue" in window&&"files" in LaunchParams.prototype){
+  launchQueue.setConsumer(async p=>{
+    for(const h of p.files||[]){ try{ const f=await h.getFile(); await openInto(await f.text(),f.name,h); }catch(e){ console.error(e); } }
+  });
+}
+// App shortcut: "New note" opens with a fresh tab; the query is then dropped so a reload does not repeat it.
+if(new URLSearchParams(location.search).has("new")){ newTab(); history.replaceState(null,"",location.pathname); }
+})();
+</script>
+</body>
+</html>
