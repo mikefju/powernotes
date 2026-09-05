@@ -70,7 +70,6 @@ body.altnav .menu u,.menu.kb u{text-decoration:underline;text-underline-offset:2
 .tab .tname{overflow:hidden;text-overflow:ellipsis;min-width:0}
 /* the name is always measured at the active tab's weight, so selecting a tab does not change its width */
 .tab .tname::after{content:attr(data-n);display:block;height:0;overflow:hidden;visibility:hidden;font-weight:600}
-.tab input.rename{font:inherit;border:0;background:transparent;color:inherit;outline:none;width:14ch;padding:0}
 /* the dot sits in the same box as the close button it stands in for, so a tab keeps its width when it goes dirty */
 .tab .tdot{flex:none;width:18px;height:18px;display:none;place-items:center}
 .tab .tdot::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--muted)}
@@ -122,6 +121,7 @@ body.drag main{outline:2px dashed var(--muted);outline-offset:-12px;border-radiu
 #editor{outline:none}
 /* the tab's name heads the page, lined up with the headings below it */
 .doctitle{margin:0 0 .8em calc(2.3*var(--u));padding:0 0 .3em;font-size:1.5em;font-weight:650;line-height:1.2;border-bottom:1px solid var(--line);color:var(--text);overflow-wrap:anywhere;user-select:none;cursor:default}
+.doctitle input.trename{font:inherit;border:0;background:transparent;color:inherit;outline:none;display:block;width:100%;padding:0;margin:0}
 .backlinks{margin-top:3em;padding-top:1em;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
 .backlinks a{color:var(--accent);text-decoration:none;cursor:pointer;margin-right:.8em}
 .backlinks a:hover{text-decoration:underline}
@@ -1654,7 +1654,7 @@ function moveTab(k,d){ moveTabTo(k,k+d); }
 let tabDrag=-1, tabDrop=null;
 function clearTabDrop(){ if(tabDrop){ tabDrop.classList.remove('drop-l','drop-r'); tabDrop=null; } }
 tabsEl.addEventListener('dragstart',e=>{
-  const t=e.target.closest&&e.target.closest('.tab'); if(!t||t.querySelector('input.rename')){ e.preventDefault(); return; }
+  const t=e.target.closest&&e.target.closest('.tab'); if(!t){ e.preventDefault(); return; }
   tabDrag=+t.dataset.k; e.dataTransfer.setData('text/plain',docs[tabDrag].name); e.dataTransfer.effectAllowed='move'; t.classList.add('dragging');
 });
 tabsEl.addEventListener('dragover',e=>{
@@ -1679,7 +1679,7 @@ function renderTabs(){
   });
   const add=el('button','btn tadd'); add.type='button'; add.textContent='+'; add.title='New (Alt+N)'; frag.append(add);
   tabsEl.replaceChildren(frag); document.title=(D().dirty?'• ':'')+D().name+(ws.name?' · '+ws.name:'')+' · PowerNotes';
-  docTitle.textContent=D().name.replace(NOTE_EXT,'');
+  if(!docTitle.querySelector('input.trename')) docTitle.textContent=D().name.replace(NOTE_EXT,'');
 }
 docTitle.addEventListener('dblclick',()=>startRename(cur));
 tabsEl.addEventListener('click',e=>{
@@ -1690,11 +1690,17 @@ tabsEl.addEventListener('click',e=>{
 });
 tabsEl.addEventListener('auxclick',e=>{ const t=e.target.closest('.tab'); if(t&&e.button===1){ e.preventDefault(); closeTab(+t.dataset.k); } });
 tabsEl.addEventListener('dblclick',e=>{ const t=e.target.closest('.tab'); if(!t||e.target.closest('.tclose')) return; startRename(+t.dataset.k); });
+/* the name is edited in the title row, which shows it without its extension; the extension it had is kept */
 function startRename(k){
   if(k!==cur) switchTab(k);
-  const t=tabsEl.querySelector('.tab.active'), n=t.querySelector('.tname'), inp=el('input','rename'); inp.value=D().name; n.replaceWith(inp); inp.focus(); inp.select();
+  if(agendaOn) setAgenda(false);
+  const open=docTitle.querySelector('input.trename'); if(open){ open.focus(); open.select(); return; }
+  const d=D(), m=NOTE_EXT.exec(d.name), ext=m?m[0]:'';
+  const inp=el('input','trename'); inp.value=d.name.slice(0,d.name.length-ext.length);
+  inp.spellcheck=false; inp.setAttribute('aria-label','File name');
+  docTitle.replaceChildren(inp); inp.focus(); inp.select();
   let done=false;
-  const finish=ok=>{ if(done) return; done=true; const v=inp.value.trim(); renderTabs(); if(ok&&v&&v!==D().name) renameDoc(D(),v); };
+  const finish=ok=>{ if(done) return; done=true; const v=inp.value.trim(); inp.remove(); renderTabs(); if(ok&&v&&v+ext!==d.name) renameDoc(d,v+ext); };
   inp.addEventListener('blur',()=>finish(true));
   inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } });
 }
