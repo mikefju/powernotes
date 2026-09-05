@@ -40,6 +40,7 @@ header{position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px
 /* with the outline open the tabs start where the page does */
 body:has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--ow) - 11px)}
 .brand{color:var(--muted);font-size:12.5px;padding:0 10px;letter-spacing:.02em;user-select:none;align-self:center}
+.brand .ver{opacity:.65;font-size:11.5px}
 .menubar{display:flex;flex:none;position:relative}
 .mbtn{border:0;background:transparent;color:var(--text);font:inherit;font-size:13.5px;line-height:1.4;padding:4px 10px;border-radius:6px;cursor:default}
 .mbtn u{text-decoration:none}
@@ -337,7 +338,7 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
     <button class="mbtn" data-menu="view"><u>V</u>iew</button>
   </nav></div>
   <div class="tabs" id="tabs" role="tablist"></div>
-  <span class="brand">PowerNotes</span>
+  <span class="brand">PowerNotes <span class="ver" id="ver"></span></span>
 </div>
 </header>
 <div class="pop" id="datePop" hidden role="dialog" aria-label="Due date">
@@ -463,6 +464,7 @@ const helpDlg=$('help'), settingsDlg=$('settings'), accessDlg=$('access'), menub
 const filterBar=$('filterBar'), fStatus=$('fStatus'), fDue=$('fDue'), fPri=$('fPri'), fTags=$('fTags'), fCount=$('fCount'), fParents=$('fParents'), fChildren=$('fChildren'), fDim=$('fDim');
 const datePop=$('datePop'), dpInput=$('dpInput'), headerEl=$('header'), crumbEl=$('crumb'), pvEl=$('preview'), palEl=$('pal'), palInput=$('palInput'), palList=$('palList'), agendaEl=$('agenda');
 const KEY='mdnotes.v2', OLDKEY='mdnotes.draft';
+const APP_VERSION='1.0.0'; $('ver').textContent='v'+APP_VERSION;
 const CHEV='<svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M3 1l5 4-5 4z"/></svg>';
 const WELCOME=`# Welcome
 Each line is a row. Hover a row and click the box beside it to check it off.
@@ -927,6 +929,12 @@ function doBackspaceAtStart(i){
     if(isList(p)&&p.checked!=null){ pushHistory(); dropCheck(p); lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
     if(p.type!=='p'){ pushHistory(); p.type='p'; p.checked=null; lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
     if(p.indent>0){ pushHistory(); p.indent--; lines[i].text=build(p); commit(); setSel({i,off:0}); return; }
+  }
+  /* an empty line at the end of the file just goes away, and the caret lands at the end of the line above; a fold that hides that line opens */
+  if(p.body===''&&i===lines.length-1&&i>0){
+    pushHistory(); lines.splice(i,1); const k=i-1;
+    for(let m=k-1;m>=0;m--) if(lines[m].collapsed&&collapsible(m)&&sectionEnd(m)>k) lines[m].collapsed=false;
+    commit(); setSel({i:k,off:parseAt(k).body.length}); return;
   }
   const j=prevVisible(i); if(j<0) return;
   const pj=parseAt(j); pushHistory(); const off=pj.body.length; pj.body+=p.body; lines[j].text=build(pj); lines.splice(i,1); commit(); setSel({i:j,off});
