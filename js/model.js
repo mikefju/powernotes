@@ -59,11 +59,20 @@ function rowMatches(p,inherited,today,week){
   return true;
 }
 function dueOf(body){ const m=RE_DUE.exec(body); return m?m[1]:null; }
+/* YAML front matter: a --- on the first line, closed by the next --- (or ...). Returns the index after the closing line, or 0 */
+function frontMatterEnd(arr){
+  const t=i=>arr[i]==null?null:(typeof arr[i]==='string'?arr[i]:arr[i].text);
+  if(t(0)!=='---') return 0;
+  for(let i=1;i<arr.length;i++){ const s=t(i); if(s==='---'||s==='...') return i+1; }
+  return 0;
+}
 function fromTextRaw(text){
   let arr=text.replace(/\r\n?/g,'\n').split('\n');
   if(arr.length>1&&arr[arr.length-1]==='') arr.pop();
   if(!arr.length) arr=[''];
-  return arr.map(t=>({text:t,collapsed:false}));
+  const out=arr.map(t=>({text:t,collapsed:false}));
+  if(frontMatterEnd(out)) out[0].collapsed=true;   /* front matter starts folded */
+  return out;
 }
 const serializeLines=arr=>arr.map(l=>l.text).join('\n')+'\n';
 /* ---------- inline markdown ---------- */

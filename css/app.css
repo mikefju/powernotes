@@ -5,7 +5,7 @@
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
   --imgmask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M1.5 3h13v10h-13z M3 11.5l3.2-4 2.6 3.2 1.8-2.2 2.4 3z M11 5.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z' fill-rule='evenodd'/></svg>");
-  --zoom:1; --u:calc(1rem*var(--zoom)); --indent:calc(1.5*var(--u)); --ow:15rem; --fw:240px;
+  --zoom:1; --u:calc(1rem*var(--zoom)); --indent:calc(1.5*var(--u)); --sw:240px;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme=light]){color-scheme:dark;--bg:#171a1e;--panel:#1f2329;--text:#d9dde3;--muted:#8d95a1;--line:#323840;--hover:#2c323a;--well:#2a3037;--accent:#86aaea;--danger:#e2807a;--warn:#d0a44c}
@@ -22,10 +22,11 @@ header{flex:none;position:relative;z-index:2;background:var(--panel);border-bott
 /* menus and tabs share one row; the tabs sit on the header's bottom edge so the active one runs into the page */
 .menurow{padding:4px 8px 0 4px;min-height:34px;align-items:flex-end;gap:8px}
 .menuwrap{flex:none;display:flex;align-items:center;align-self:stretch}
-/* with the outline open the tabs start where the page does */
-body:has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--ow) - 11px)}
-body:has(#files:not([hidden])) .menuwrap{min-width:calc(var(--fw) - 11px)}
-body:has(#files:not([hidden])):has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--fw) + var(--ow) - 11px)}
+/* with the sidebar open the tabs start where the page does */
+body.side-open .menuwrap{min-width:calc(var(--sw) - 11px)}
+.sidetoggle{margin-right:2px;color:var(--muted)}
+.sidetoggle svg{width:16px;height:16px;display:block}
+body.side-open .sidetoggle{color:var(--text)}
 .brand{color:var(--muted);font-size:12.5px;padding:0 10px;letter-spacing:.02em;user-select:none;align-self:center}
 .brand .ver{opacity:.65;font-size:11.5px}
 .menubar{display:flex;flex:none;position:relative}
@@ -108,25 +109,58 @@ body.altnav .menu u,.menu.kb u{text-decoration:underline;text-underline-offset:2
 .pop .quick{display:flex;gap:2px}
 .pop .quick .btn{padding:3px 8px;font-size:13px}
 
-.app{flex:1;min-height:0;display:flex;align-items:stretch}
-.outline{flex:none;width:var(--ow);overflow:auto;padding:20px 8px 20px 16px;font-size:13px;background:var(--panel);border-right:1px solid var(--line)}
-.outline .oh{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px}
+.app{flex:1;min-height:0;display:flex;align-items:stretch;position:relative}
+/* the sidebar: one panel with a row of view icons on top; files, search, tags or the outline below */
+.side{position:relative;flex:none;width:var(--sw);display:flex;flex-direction:column;font-size:13px;background:var(--panel);border-right:1px solid var(--line)}
+.stabs{flex:none;display:flex;gap:2px;padding:6px 8px 2px}
+.stab{flex:1;border:0;background:transparent;color:var(--muted);padding:5px 0;border-radius:6px;cursor:pointer;display:grid;place-items:center}
+.stab svg{width:16px;height:16px;display:block}
+.stab:hover{background:var(--hover);color:var(--text)}
+.stab[aria-selected=true]{color:var(--text);background:var(--well)}
+.sview{flex:1;min-height:0;display:flex;flex-direction:column}
+.sview.outline{overflow:auto;padding:8px 8px 20px 12px;display:block}
+.outline .oh{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:4px 8px 6px}
 .outline .oi{display:block;padding:3px 8px;border-radius:6px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:calc(8px + var(--d,0)*12px)}
 .outline .oi:hover{background:var(--hover);color:var(--text)}
 .outline .oi.cur{color:var(--text);background:var(--well)}
 .outline .oe{color:var(--muted);padding:0 8px;font-style:italic}
-/* the files pane: the open folder as a tree, folders first, notes without their .md */
-.files{position:relative;flex:none;width:var(--fw);display:flex;flex-direction:column;font-size:13px;background:var(--panel);border-right:1px solid var(--line)}
-.files .fh{display:flex;align-items:center;gap:1px;padding:12px 6px 4px 8px;min-height:36px}
+/* a thin scrim behind the sidebar when it floats over the page on a narrow screen */
+.sidebg{position:absolute;inset:0;z-index:3;background:rgba(0,0,0,.25)}
+@media (max-width:720px){
+  .side{position:absolute;top:0;bottom:0;left:0;z-index:4;width:min(var(--sw),85vw);box-shadow:8px 0 30px rgba(0,0,0,.25)}
+  body.side-open .menuwrap{min-width:0}
+  .brand{display:none}
+}
+/* the files view: the open folder as a tree, folders first, notes without their .md */
+.fh{display:flex;align-items:center;gap:1px;padding:4px 6px 4px 8px;min-height:32px}
 /* the folder name is the workspace switcher */
-.files .fh .fname{flex:1;min-width:0;display:flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px;border-radius:6px;cursor:pointer;text-align:left;user-select:none}
-.files .fh .fname:hover{background:var(--hover);color:var(--text)}
-.files .fh .fname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.files .fh .fname svg{flex:none;width:9px;height:9px;opacity:.7}
-.files .fh .btn{padding:3px 5px;min-width:0;display:none}
-.files.ready .fh .btn{display:block}
-.files .fh .btn svg{width:15px;height:15px;display:block}
+.fh .fname{flex:1;min-width:0;display:flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px;border-radius:6px;cursor:pointer;text-align:left;user-select:none}
+.fh .fname:hover{background:var(--hover);color:var(--text)}
+.fh .fname.static{cursor:default}
+.fh .fname.static:hover{background:transparent;color:var(--muted)}
+.fh .fname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fh .fname svg{flex:none;width:9px;height:9px;opacity:.7}
+.fh .btn{padding:3px 5px;min-width:0}
+#files .fh .btn{display:none}
+#files.ready .fh .btn{display:block}
+.fh .btn svg{width:15px;height:15px;display:block}
 .ftree{flex:1;overflow:auto;padding:0 6px 24px;outline:none;border-radius:6px}
+/* tags: a tree of #tags with how often each is used */
+.fr .tn{flex:none;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;margin-left:auto;padding-left:8px}
+/* search: a field, then hits grouped by note, each hit one line with its match lit */
+.sh{display:flex;align-items:center;gap:4px;padding:4px 8px}
+.sh .fin{flex:1;width:auto;font-size:13px;line-height:1.4;padding:4px 8px;background:var(--bg)}
+.sh .btn{padding:3px 7px;font-size:12.5px}
+.sh .btn[aria-pressed=true]{background:var(--bg);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.scount{padding:0 14px 4px;color:var(--muted);font-size:11.5px;min-height:1.2em}
+.slist{flex:1;overflow:auto;padding:0 6px 24px}
+.slist .sg{padding:6px 8px 2px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:6px;display:flex;gap:8px;align-items:baseline}
+.slist .sg:hover{background:var(--hover)}
+.slist .sg .tn{font-weight:400}
+.slist .sr{padding:2px 8px 2px 16px;border-radius:6px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
+.slist .sr:hover{background:var(--hover);color:var(--text)}
+.slist .sr mark{background:rgba(233,171,64,.35);color:inherit;border-radius:2px}
+.slist .snone{padding:6px 10px;color:var(--muted);line-height:1.5;white-space:normal}
 .ftree.drop{box-shadow:inset 0 0 0 2px var(--accent)}
 .fr{display:flex;align-items:center;gap:3px;padding:2px 6px 2px calc(4px + var(--d,0)*14px);border-radius:6px;color:var(--muted);white-space:nowrap;cursor:default;user-select:none;line-height:1.5}
 .fr:hover{background:var(--hover);color:var(--text)}
@@ -141,8 +175,8 @@ body.altnav .menu u,.menu.kb u{text-decoration:underline;text-underline-offset:2
 .fr.drop{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text)}
 .fr.dragging{opacity:.4}
 .fr input.frename{font:inherit;border:1px solid var(--accent);background:var(--bg);color:var(--text);border-radius:4px;padding:0 4px;outline:none;min-width:0;flex:1;line-height:1.4}
-.files .fempty{padding:6px 10px;color:var(--muted);line-height:1.5;white-space:normal}
-.files .fempty .btn{border:1px solid var(--line);color:var(--text);margin-top:8px;cursor:pointer}
+.fempty{padding:6px 10px;color:var(--muted);line-height:1.5;white-space:normal}
+.fempty .btn{border:1px solid var(--line);color:var(--text);margin-top:8px;cursor:pointer}
 .fresize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:1}
 /* panes: each one scrolls on its own, side by side or stacked, with a draggable line between them */
 .panes{flex:1;min-width:0;min-height:0;display:flex;align-items:stretch}
@@ -305,7 +339,7 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 .dlg .wsl .btn{padding:2px 8px;font-size:12.5px}
 [hidden]{display:none!important}
 @media print{
-  header,.files,.outline,.backlinks,.find,.fbar,.pop,.ac,.handle,.chev,.crumb,.preview,.pal,.tabbar,.docmeta,.psplit,.pane:not(.active){display:none!important}
+  header,.side,.sidebg,.backlinks,.find,.fbar,.pop,.ac,.handle,.chev,.crumb,.preview,.pal,.tabbar,.docmeta,.psplit,.pane:not(.active){display:none!important}
   .content[data-meta]::after{content:none}
   .row.dim{opacity:1}
   html,body{height:auto;overflow:visible;display:block;background:#fff;color:#000}

@@ -49,14 +49,16 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(k==='s'){ e.preventDefault(); P.saveFile(e.shiftKey); }
   else if(k==='o'&&!e.shiftKey){ e.preventDefault(); openFile(); }
-  else if(k==='o'&&e.shiftKey){ e.preventDefault(); viewToggle('outline')(); }
-  else if(k==='e'&&e.shiftKey){ e.preventDefault(); toggleFiles(); }
+  else if(k==='o'&&e.shiftKey){ e.preventDefault(); showView('outline',true); }
+  else if(k==='e'&&e.shiftKey){ e.preventDefault(); showView('files',true); }
+  else if(k==='b'&&e.shiftKey){ e.preventDefault(); toggleSide(); }
+  else if(k==='l'&&e.shiftKey){ e.preventDefault(); toggleFilterBar(); }
   else if(k==='p'&&!e.shiftKey){ e.preventDefault(); window.print(); }
   else if(k==='p'&&e.shiftKey){ e.preventDefault(); if(pal.open) closePalette(true); else openPalette(); }
   else if(k==='a'&&e.shiftKey){ e.preventDefault(); P.setAgenda(!P.agendaOn()); }
   else if(k==='d'&&!e.shiftKey&&!inField&&!P.sourceOn()&&!P.agendaOn()){ e.preventDefault(); P.withSel(P.duplicateLines); }
   else if(k==='f'&&!e.shiftKey){ e.preventDefault(); P.openFind(false); }
-  else if(k==='f'&&e.shiftKey){ e.preventDefault(); toggleFilterBar(); }
+  else if(k==='f'&&e.shiftKey){ e.preventDefault(); showView('search',true); }
   else if(k==='h'&&!e.shiftKey){ e.preventDefault(); P.openFind(true); }
   else if(e.key==='\\'||e.code==='Backslash'){ e.preventDefault(); splitPane(P,'row'); }
   else if(k==='/'||e.key==='?'){ e.preventDefault(); toggleHelp(); }
@@ -120,7 +122,10 @@ function loadDraft(){
     const s=JSON.parse(localStorage.getItem(KEY)); if(!s||!Array.isArray(s.docs)||!s.docs.length) return null;
     const byId=new Map();
     const docs=s.docs.map(x=>{ const d=newDoc(x.name,x.text); if(x.id) d.id=x.id; (x.collapsed||[]).forEach(i=>{ if(d.lines[i]) d.lines[i].collapsed=true; }); d.dirty=!!x.dirty; d.created=!!x.created; d.pinned=!!x.pinned; d.ctime=typeof x.ctime==='number'?x.ctime:fmCreated(x.text||''); d.indentUnit=detectIndent(d.lines); byId.set(d.id,d); return d; });
-    const st=s.settings||s; for(const k of Object.keys(settings)) if(k!=='filter'&&st[k]!==undefined&&typeof st[k]===typeof settings[k]) settings[k]=st[k];
+    const st=s.settings||s; for(const k of Object.keys(settings)) if(k!=='filter'&&k!=='side'&&st[k]!==undefined&&typeof st[k]===typeof settings[k]) settings[k]=st[k];
+    /* the sidebar: its own record, or the files / outline / width settings of older drafts */
+    const sd=(st.side&&typeof st.side==='object')?st.side:{open:st.files!==false||!!st.outline,view:st.outline&&st.files===false?'outline':'files',w:st.fw}, side=settings.side;
+    if(typeof sd.open==='boolean') side.open=sd.open; if(SIDE_VIEWS.includes(sd.view)) side.view=sd.view; if(typeof sd.w==='number') side.w=sd.w; if(sd.tagSort==='name'||sd.tagSort==='count') side.tagSort=sd.tagSort;
     if(!FSORTS.some(x=>x[0]===settings.fsort)) settings.fsort='az';
     const f=Object.assign({on:false},FILTER_DEFAULTS,(st.filter&&typeof st.filter==='object')?st.filter:{});
     if(!Array.isArray(f.tags)) f.tags=[]; f.tags=f.tags.filter(t=>typeof t==='string');
@@ -145,12 +150,12 @@ async function init(){
     if(old&&typeof old.text==='string'){ d=newDoc(old.name,old.text); d.dirty=!!old.dirty; d.indentUnit=detectIndent(d.lines); } else d=newDoc('Welcome.md',WELCOME);
     st={docs:[d],paneSpecs:[{tabs:[d],cur:0,size:0}],active:0};
   }
-  applySettings(); setZoom(settings.zoom); setFw(settings.fw);
+  applySettings(); setZoom(settings.zoom); setSideWidth(settings.side.w);
   for(const spec of st.paneSpecs){ const p=makePane(uid()); p.size=spec.size; panes.push(p); }
   layoutPanes();
   st.paneSpecs.forEach((spec,k)=>panes[k].init(spec.tabs,spec.cur));
   setActive(panes[st.active]||panes[0]);
-  renderTree();
+  renderSide();
   /* the tabs' file handles come first, so the folder scan can tell which tabs are its notes */
   await Promise.all(st.docs.map(d=>idb.get('handles',d.id).then(h=>{ if(h) d.handle=h; })));
   /* when each file was last written, for the line under the title; a file that cannot be read yet is left alone */

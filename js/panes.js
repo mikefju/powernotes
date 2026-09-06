@@ -68,7 +68,7 @@ panesEl.addEventListener('mousedown',e=>{
   addEventListener('mousemove',mv); addEventListener('mouseup',up);
 });
 /* opens the files pane at a note */
-function revealInTree(path){ if(!path) return; settings.files=true; let p=parentOf(path); while(p){ exp.add(p); p=parentOf(p); } renderTree(); selectRow(path); scheduleDraft(); }
+function revealInTree(path){ if(!path) return; let p=parentOf(path); while(p){ exp.add(p); p=parentOf(p); } showView('files'); selectRow(path); scheduleDraft(); }
 /* a tab that is not in the folder gets a copy there, and the tab switches to the copy */
 async function copyIntoVault(d){
   if(!ws.dir||!vx.perm||!vx.root) return; flushDoc(d);

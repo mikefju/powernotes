@@ -1,9 +1,27 @@
 /* PowerNotes service worker: precache the app shell so it opens offline,
    refresh the shell in the background, and hand the page a "new version" signal. */
-const VERSION = 'pn-v7';
+const VERSION = 'pn-v8';
 const SHELL = [
   './',
   './index.html',
+  './css/app.css',
+  './js/state.js',
+  './js/idb.js',
+  './js/model.js',
+  './js/panes.js',
+  './js/pane.js',
+  './js/media.js',
+  './js/shared.js',
+  './js/palette.js',
+  './js/disk.js',
+  './js/vault.js',
+  './js/files.js',
+  './js/sidebar.js',
+  './js/search.js',
+  './js/tags.js',
+  './js/workspaces.js',
+  './js/menus.js',
+  './js/app.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -29,8 +47,9 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
-/* Same-origin GETs only. The page itself is fetched network-first (so edits show on the next load) with the
-   cached copy as the offline fallback; other assets are served from cache and refreshed in the background. */
+/* Same-origin GETs only. The page and its scripts and styles are fetched network-first, so a deploy shows on the
+   next load and the files always match each other, with the cached copy as the offline fallback; other assets
+   are served from cache and refreshed in the background. */
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;

@@ -141,7 +141,7 @@ function render(){
     row.append(g,c); frag.append(row);
   });
   editor.replaceChildren(frag);
-  renderOutline(); renderBacklinks(); renderFilterBar(); renderMeta(); updateHighlights(); scheduleCrumb();
+  renderOutline(); renderBacklinks(); renderFilterBar(); renderMeta(); updateHighlights(); scheduleCrumb(); scheduleTags();
 }
 /* the pictures a row links to, shown under its text; each is loaded from the folder once and kept as a blob URL */
 function addMedia(row,body){
@@ -157,22 +157,25 @@ function addMedia(row,body){
 }
 /* expands whatever hides row i, then puts the caret on it and scrolls it to the top */
 function revealRow(i,off){
+  if(!lines[i]) return;
   for(let j=i-1;j>=0;j--) if(lines[j].collapsed&&collapsible(j)&&sectionEnd(j)>i) lines[j].collapsed=false;
+  if(sourceOn) setSource(false); if(agendaOn) setAgenda(false);
   render(); setSel({i,off:off==null?parseAt(i).body.length:off});
   const r=editor.children[i]; if(r) r.scrollIntoView({block:'start'});
 }
+/* a search hit: the row shown, with the match selected */
+function revealRange(i,s,e){ if(!lines[i]) return; revealRow(i,s); setSel({i,off:s},{i,off:e}); const r=editor.children[i]; if(r) r.scrollIntoView({block:'center'}); }
 /* ---------- outline and backlinks ---------- */
 function renderOutline(){
-  if(P!==activePane) return;
-  outlineEl.hidden=!settings.outline||sourceOn||agendaOn; if(outlineEl.hidden) return;
-  const frag=document.createDocumentFragment(); const h=el('div','oh'); h.textContent='Outline'; frag.append(h);
+  if(P!==activePane||!sideShowing('outline')) return;
+  const frag=document.createDocumentFragment(); const h=el('div','oh'); h.textContent=labelOf(D().name); frag.append(h);
   let any=false;
-  lines.forEach((l,i)=>{ const p=parseAt(i); if(p.type!=='h') return; any=true; const a=el('a','oi'); a.dataset.i=i; a.style.setProperty('--d',p.level-1); a.textContent=p.body||'(untitled)'; a.title=p.body; frag.append(a); });
-  if(!any){ const e=el('div','oe'); e.textContent='No headings yet'; frag.append(e); }
+  if(!sourceOn&&!agendaOn) lines.forEach((l,i)=>{ const p=parseAt(i); if(p.type!=='h') return; any=true; const a=el('a','oi'); a.dataset.i=i; a.style.setProperty('--d',p.level-1); a.textContent=p.body||'(untitled)'; a.title=p.body; frag.append(a); });
+  if(!any){ const e=el('div','oe'); e.textContent=sourceOn||agendaOn?'Not in this view':'No headings yet'; frag.append(e); }
   outlineEl.replaceChildren(frag); markOutline();
 }
 function markOutline(){
-  if(P!==activePane||outlineEl.hidden||!lastSel) return;
+  if(P!==activePane||!sideShowing('outline')||!lastSel) return;
   let cur=-1; for(let i=lastSel.f.i;i>=0;i--) if(parseAt(i).type==='h'){ cur=i; break; }
   outlineEl.querySelectorAll('.oi').forEach(a=>a.classList.toggle('cur',+a.dataset.i===cur));
 }
@@ -1125,7 +1128,7 @@ function setSource(on){
   if(!on) syncFromSource();
   if(on&&agendaOn) setAgenda(false);
   sourceOn=on;
-  if(on){ closeDatePop(false); acHide(); hidePreview(); renumber(); src.value=serialize(); editor.hidden=true; src.hidden=false; outlineEl.hidden=true; backEl.hidden=true; filterBar.hidden=true; crumbEl.hidden=true; src.focus(); }
+  if(on){ closeDatePop(false); acHide(); hidePreview(); renumber(); src.value=serialize(); editor.hidden=true; src.hidden=false; renderOutline(); backEl.hidden=true; filterBar.hidden=true; crumbEl.hidden=true; src.focus(); }
   else { editor.hidden=false; src.hidden=true; render(); if(lastSel) setSel(lastSel.a,lastSel.f); }
 }
 function syncFromSource(){ if(!sourceOn) return; const t=src.value; if(t===serialize()) return; setLines(fromText(t,true)); indentUnit=detectIndent(lines); }
@@ -1299,7 +1302,7 @@ Object.assign(P,{root,tabsEl,tabBar,main,find,cmd,
   newTab,closeTab,switchTab,cycleTab,moveTab,moveTabTo,startRename,openInto,addDocs,replaceCur,canReplace,goBack,goForward,togglePin,
   saveFile,exportHtml,setSource,setAgenda,withSel,restoreSel,refocus:refocusSel,focusEditor,dismiss,
   doUndo,doRedo,openFind,closeFind,runFind,findStep,replaceOne,replaceAll,
-  foldAll,collapseCurrent,expandCurrent,duplicateLines,moveBlock,revealRow,insertImages,rowAt,
+  foldAll,collapseCurrent,expandCurrent,duplicateLines,moveBlock,revealRow,revealRange,insertImages,rowAt,
   detach,attach,closeClean,destroy});
 return P;
 }

@@ -31,7 +31,7 @@ const PIN='<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path
 
 /* ---------- shared state ---------- */
 const FILTER_DEFAULTS={status:'all',due:'any',pri:'any',tags:[],parents:true,children:true,dim:false};
-const settings={zoom:1,hideDone:false,indentHeadings:true,outline:false,files:true,fw:240,theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,fsort:'az',filter:Object.assign({on:false},FILTER_DEFAULTS)};
+const settings={zoom:1,hideDone:false,indentHeadings:true,side:{open:true,view:'files',w:240,tagSort:'count'},theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,fsort:'az',filter:Object.assign({on:false},FILTER_DEFAULTS)};
 let draftTimer=0;
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 function newDoc(name,text){ return {id:uid(), name:name||'Untitled.md', lines:fromTextRaw(text||''), handle:null, dirty:false, undo:[], redo:[], sel:null, scroll:0, indentUnit:2, ctime:null, mtime:undefined, pinned:false, back:[], fwd:[]}; }

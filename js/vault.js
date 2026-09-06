@@ -101,7 +101,7 @@ async function scanOnce(full,paths){
   for(const c of changed){ const d=openDocAt(c.e.path); if(!d) continue; if(d.mtime==null){ d.mtime=c.e.mtime; continue; } if(c.e.mtime!==d.mtime&&!d.dirty){ d.mtime=c.e.mtime; reloadDoc(d,c.text); } }
   if(sig!==vx.sig){ vx.sig=sig; renderTree(); }
   if(placed) renderTabsAll();
-  if(changed.length||gone){ renderBacklinksAll(); renderAgendaAll(); scheduleCache(); }
+  if(changed.length||gone){ renderBacklinksAll(); renderAgendaAll(); scheduleTags(); scheduleCache(); }
   return true;
 }
 function scheduleCache(){ clearTimeout(cacheTimer); cacheTimer=setTimeout(saveCache,3000); }
@@ -121,15 +121,15 @@ async function openVault(dir){
     if(!window.showDirectoryPicker){ alert('This browser cannot open folders. Chrome or Edge can.'); return; }
     try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e){ if(e.name!=='AbortError') console.error(e); return; }
   } else if(!(await grantHandle(dir,'readwrite','the folder "'+dir.name+'"'))) return;
-  if(ws.dir&&await ws.dir.isSameEntry(dir).catch(()=>false)){ settings.files=true; await grantVault(); return; }
+  if(ws.dir&&await ws.dir.isSameEntry(dir).catch(()=>false)){ showView('files'); await grantVault(); return; }
   await stashSession(); closeCleanTabs(); setWs(null,dir.name,dir); await restoreSession(dir);
 }
 function setWs(key,name,dir){
   syncStop(); dropMediaUrls(); ws={key,name,dir:dir||null,autoKey:null}; for(const d of allDocs()) d.wsPath=undefined;
   vx.root=null; vx.dirs=new Map(); vx.notes=new Map(); vx.media=new Map(); vx.perm=false; vx.sig=''; vx.msig=''; exp=new Set(); fsel=null;
-  if(dir){ idb.set('handles','folder',dir); rememberDir(dir); settings.files=true; grantVault(); }
+  if(dir){ idb.set('handles','folder',dir); rememberDir(dir); settings.side.view='files'; grantVault(); }
   else idb.del('handles','folder');
-  renderTree(); renderTabsAll(); scheduleDraft();
+  renderSide(); renderTabsAll(); scheduleDraft();
 }
 /* with permission in hand: the cached index, the tree, a first full scan, and the watch on the folder */
 async function grantVault(){
@@ -185,14 +185,14 @@ function reloadDoc(d,text){ const p=paneOf(d); if(p) p.reload(d,text); else { d.
    or in a new pane beside it ('split'). A note already open anywhere is brought to the front instead */
 async function openNote(e,how){
   const open=allDocs().find(d=>d.wsPath===e.path);
-  if(open){ if(how==='split') splitPane(A(),'row',open); else focusDoc(open); return open; }
+  if(open){ if(how==='split') splitPane(A(),'row',open); else focusDoc(open); sideAutoClose(); return open; }
   if(!e.handle) return null;
   let f=null, text=''; try{ f=await e.handle.getFile(); text=await f.text(); }catch(x){ alert('Could not open '+e.name+'.'); requestScan(true,null,0); return null; }
   const P=A(), meta={path:e.path,mtime:f.lastModified,ctime:e.ctime||null}; let d;
   if(how==='split'){ const N=splitPane(P,'row'); d=N.replaceCur(text,e.name,e.handle,meta); }
   else if(how==='tab'||!(await P.canReplace())){ d=await P.openInto(text,e.name,e.handle,meta); }
   else { d=P.replaceCur(text,e.name,e.handle,meta); A().focusEditor(); }
-  filesMarkCur(); return d;
+  filesMarkCur(); sideAutoClose(); return d;
 }
 /* writes a tab to its file and brings the index entry along; true when the tab is clean afterwards */
 async function writeDoc(d){

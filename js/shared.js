@@ -1,7 +1,7 @@
 'use strict';
 /* ---------- shared bits of the editor: links, find bar, filter bar, suggestions, palette, agenda items ---------- */
 function wikiTargets(name){ const n=name.replace(/\.md$/i,'').toLowerCase(); return allDocs().filter(d=>d.name.replace(/\.md$/i,'').toLowerCase()===n); }
-outlineEl.addEventListener('click',e=>{ const a=e.target.closest('.oi'); if(!a) return; A().revealRow(+a.dataset.i); });
+outlineEl.addEventListener('click',e=>{ const a=e.target.closest('.oi'); if(!a) return; A().revealRow(+a.dataset.i); sideAutoClose(); });
 findInput.addEventListener('input',()=>A().runFind(true));
 findInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); A().findStep(e.shiftKey?-1:1); } else if(e.key==='Escape'){ e.preventDefault(); A().closeFind(); } });
 replInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); A().replaceOne(); } else if(e.key==='Escape'){ e.preventDefault(); A().closeFind(); } });

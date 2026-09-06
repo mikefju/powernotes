@@ -3,7 +3,7 @@
 function fempty(msg,btn,fn){ const d=el('div','fempty'); d.append(msg); if(btn){ const b=el('button','btn'); b.type='button'; b.textContent=btn; b.addEventListener('click',fn); d.append(el('br'),b); } return d; }
 let treeStale=false;
 function renderTree(){
-  filesEl.hidden=!settings.files; if(filesEl.hidden) return;
+  if(!sideShowing('files')) return;
   if(treeEl.querySelector('input.frename')){ treeStale=true; return; }   /* not under a rename in progress */
   treeStale=false;
   const ready=!!(ws.dir&&vx.perm&&vx.root); rows.clear();
@@ -24,7 +24,7 @@ function renderTree(){
   if(!vx.root.dirs.length&&!vx.root.files.length) frag.append(fempty('No notes in this folder yet. Alt+N makes one.'));
   treeEl.replaceChildren(frag);
 }
-function filesMarkCur(reveal){ if(filesEl.hidden) return; const p=A()&&A().D()?A().D().wsPath:null; for(const [k,r] of rows) r.classList.toggle('cur',k===p); if(reveal&&p){ const r=rows.get(p); if(r) r.scrollIntoView({block:'nearest'}); } }
+function filesMarkCur(reveal){ if(!sideShowing('files')) return; const p=A()&&A().D()?A().D().wsPath:null; for(const [k,r] of rows) r.classList.toggle('cur',k===p); if(reveal&&p){ const r=rows.get(p); if(r) r.scrollIntoView({block:'nearest'}); } }
 /* the sort orders Obsidian offers; folders keep their place at the top and follow the name order */
 const FSORTS=[['az','File name (A to Z)'],['za','File name (Z to A)'],['mnew','Modified time (new to old)'],['mold','Modified time (old to new)'],['cnew','Created time (new to old)'],['cold','Created time (old to new)']];
 function sortedFiles(files){
@@ -38,8 +38,7 @@ const sortMenu=()=>FSORTS.map(([v,l])=>({l,chk:settings.fsort===v,f:()=>setFsort
 function selectRow(p){ fsel=p; for(const [k,r] of rows) r.classList.toggle('sel',k===p); const r=rows.get(p); if(r) r.scrollIntoView({block:'nearest'}); }
 function toggleDir(p){ if(exp.has(p)) exp.delete(p); else exp.add(p); renderTree(); scheduleDraft(); }
 function activateRow(p,how){ if(isDirPath(p)) toggleDir(p); else { const e=vx.notes.get(p); if(e) openNote(e,how); } }
-function toggleFiles(){ settings.files=!settings.files; renderTree(); scheduleDraft(); }
-function setFw(w){ settings.fw=Math.max(160,Math.min(600,Math.round(w))); document.documentElement.style.setProperty('--fw',settings.fw+'px'); }
+function toggleFiles(){ showView('files',true); }
 /* the folder a new note or folder goes into: the selected folder, else the one holding the selected note, else the
    one holding the current note, else the top */
 function selDir(){
@@ -106,11 +105,6 @@ $('fNewDir').addEventListener('click',()=>newFolderIn(selDir()));
 $('fFold').addEventListener('click',()=>{ exp.clear(); renderTree(); scheduleDraft(); });
 $('fSort').addEventListener('click',e=>{ const r=e.currentTarget.getBoundingClientRect(); showContextMenu(r.left,r.bottom+4,[{h:'Sort by'},...sortMenu()]); });
 fNameEl.addEventListener('click',e=>{ const r=e.currentTarget.getBoundingClientRect(); showContextMenu(r.left,r.bottom+4,workspaceMenu()); });
-$('fResize').addEventListener('mousedown',e=>{
-  e.preventDefault(); const x0=e.clientX, w0=settings.fw;
-  const mv=ev=>setFw(w0+ev.clientX-x0), up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); scheduleDraft(); };
-  addEventListener('mousemove',mv); addEventListener('mouseup',up);
-});
 /* dragging a note or folder onto a folder row (or onto the pane's empty space, for the top) moves it there */
 let treeDrag=null, treeDrop=null;
 function dropDirOf(e){ const r=e.target.closest('.fr'); if(!r) return ''; const p=r.dataset.p; return isDirPath(p)?p:parentOf(p); }

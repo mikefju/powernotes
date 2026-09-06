@@ -87,7 +87,7 @@
   </span>
 </div>
 <div class="bar menurow">
-  <div class="menuwrap"><nav class="menubar" id="menubar" aria-label="Menu">
+  <div class="menuwrap"><button class="btn icon sidetoggle" id="sideToggle" type="button" title="Sidebar (Ctrl+Shift+B)" aria-label="Toggle sidebar"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M6 2.5v11"/></svg></button><nav class="menubar" id="menubar" aria-label="Menu">
     <button class="mbtn" data-menu="file"><u>F</u>ile</button>
     <button class="mbtn" data-menu="edit"><u>E</u>dit</button>
     <button class="mbtn" data-menu="view"><u>V</u>iew</button>
@@ -101,7 +101,14 @@
   <div class="plist" id="palList" role="listbox"></div>
 </div>
 <div class="app">
-<aside class="files" id="files" hidden aria-label="Files">
+<aside class="side" id="side" hidden aria-label="Sidebar">
+<nav class="stabs" id="sideTabs" role="tablist" aria-label="Sidebar views">
+  <button class="stab" type="button" role="tab" data-view="files" title="Files (Ctrl+Shift+E)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5h4l1.5 1.5h7.5v8h-13z"/></svg></button>
+  <button class="stab" type="button" role="tab" data-view="search" title="Search (Ctrl+Shift+F)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.3"/><path d="M10 10l4 4"/></svg></button>
+  <button class="stab" type="button" role="tab" data-view="tags" title="Tags"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5.5 2.5l-1 11M11.5 2.5l-1 11M2.5 6h11M2 10h11"/></svg></button>
+  <button class="stab" type="button" role="tab" data-view="outline" title="Outline (Ctrl+Shift+O)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 3.5h11M5 8h8.5M7.5 12.5h6"/></svg></button>
+</nav>
+<section class="sview" id="files" hidden aria-label="Files">
   <div class="fh">
     <button class="fname" id="fName" type="button" title="Switch workspace or folder"><span>Files</span><svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M1 3l4 4 4-4z"/></svg></button>
     <button class="btn icon" id="fNew" type="button" title="New note"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13"/><path d="M8.5 7.5v4M6.5 9.5h4" stroke-linecap="round"/></svg></button>
@@ -110,9 +117,23 @@
     <button class="btn icon" id="fFold" type="button" title="Collapse all"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l4-3 4 3M4 12.5l4-3 4 3"/></svg></button>
   </div>
   <div class="ftree" id="fTree" role="tree" tabindex="0" aria-label="Notes in the folder"></div>
-  <div class="fresize" id="fResize" title="Drag to resize"></div>
+</section>
+<section class="sview" id="search" hidden aria-label="Search">
+  <div class="sh">
+    <input class="fin" id="searchInput" placeholder="Search notes" aria-label="Search notes" spellcheck="false" autocomplete="off">
+    <button class="btn" id="searchCase" type="button" aria-pressed="false" title="Match case">Aa</button>
+  </div>
+  <div class="scount" id="searchCount"></div>
+  <div class="slist" id="searchList"></div>
+</section>
+<section class="sview" id="tags" hidden aria-label="Tags">
+  <div class="fh"><span class="fname static"><span>Tags</span></span><button class="btn icon" id="tagSort" type="button" title="Sort by name or count"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5v11M2.5 11l2.5 2.5L7.5 11M11 13.5v-11M8.5 5L11 2.5 13.5 5"/></svg></button></div>
+  <div class="ftree" id="tagList" role="tree" aria-label="Tags in the folder"></div>
+</section>
+<section class="sview outline" id="outline" hidden aria-label="Outline"></section>
+<div class="fresize" id="fResize" title="Drag to resize"></div>
 </aside>
-<aside class="outline" id="outline" hidden aria-label="Outline"></aside>
+<div class="sidebg" id="sideBg" hidden></div>
 <div class="panes" id="panes"></div>
 </div>
 <template id="paneTpl">
@@ -252,6 +273,9 @@
 <script src="js/disk.js"></script>
 <script src="js/vault.js"></script>
 <script src="js/files.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/search.js"></script>
+<script src="js/tags.js"></script>
 <script src="js/workspaces.js"></script>
 <script src="js/menus.js"></script>
 <script src="js/app.js"></script>
