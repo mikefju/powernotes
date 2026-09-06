@@ -5,7 +5,7 @@
    up here. Every note in it has an index entry (links, dated items, tags, first lines, mtime) so backlinks, the
    agenda, link previews and autocomplete cover the whole folder and not only the open tabs. Entries are cached in
    IndexedDB and reused while a file's size and mtime are unchanged, so reopening a big folder does not re-read it. */
-const NOTE_EXT=/\.(md|markdown|txt)$/i, SKIP_DIR=/^(\.|node_modules$|\$RECYCLE)/i, VX_MAX=20000, VX_DEPTH=16;
+const NOTE_EXT=/\.(md|markdown|txt)$/i, SKIP_DIR=/^(\.|node_modules$|\$RECYCLE)/i, ATTACH_DIR=/^attachments$/i, VX_MAX=20000, VX_DEPTH=16;
 let ws={key:null,name:'',dir:null,autoKey:null}, workspaces=[];
 const vx={root:null,dirs:new Map(),notes:new Map(),media:new Map(),perm:false,scanning:false,busy:0,sig:'',msig:''};
 const filesEl=$('files'), treeEl=$('fTree'), fNameEl=$('fName'), rows=new Map();
@@ -29,7 +29,7 @@ async function walkTree(dir){
   const root={path:'',name:dir.name,handle:dir,dirs:[],files:[],media:new Map()}; let count=0;
   const walk=async(node,depth)=>{
     try{ for await(const h of node.handle.values()){
-      if(h.kind==='file'){ if(NOTE_EXT.test(h.name)&&count<VX_MAX){ count++; node.files.push({path:node.path+h.name,name:h.name,handle:h}); } else if(IMG_EXT.test(h.name)&&root.media.size<VX_MAX) root.media.set(node.path+h.name,h); }
+      if(h.kind==='file'){ if(NOTE_EXT.test(h.name)&&count<VX_MAX){ count++; node.files.push({path:node.path+h.name,name:h.name,handle:h}); } else if((IMG_EXT.test(h.name)||(depth>0&&ATTACH_DIR.test(node.name)))&&!/\.crswap$/i.test(h.name)&&root.media.size<VX_MAX) root.media.set(node.path+h.name,h); }
       else if(h.kind==='directory'&&!SKIP_DIR.test(h.name)&&depth<VX_DEPTH) node.dirs.push({path:node.path+h.name+'/',name:h.name,handle:h,dirs:[],files:[]});
     } }catch(e){}
     node.files.sort(byName); node.dirs.sort(byName);
@@ -40,7 +40,7 @@ async function walkTree(dir){
 /* what the rest of the app wants to know about a note without opening it */
 function indexText(text,name){
   const links=new Set(), dates=new Set(), items=[], tags={}, head=[], title=baseOf(name).toLowerCase(); let inF=false, n=0;
-  const arr=text.split('\n'), fmEnd=frontMatterEnd(arr);
+  const arr=text.split('\n'), fmEnd=frontMatterEnd(arr), refs=new Set(linkRefs(text));
   const bump=(label)=>{ label=label.replace(/^#/,''); if(!/^[A-Za-z_][\w\-\/]*$/.test(label)) return; const k=label.toLowerCase(); if(tags[k]) tags[k][1]++; else tags[k]=[label,1]; };
   /* tags in the front matter: tags: a, b  or  tags: [a, b]  or a YAML list under tags: */
   for(let j=1,list=false;j<fmEnd-1;j++){
@@ -61,7 +61,7 @@ function indexText(text,name){
     if(!n&&p.type==='h'&&plainText(p.body).toLowerCase()===title) return;   /* the note's own title line */
     n++; if(head.length<8) head.push({h:p.type==='h',ind:p.indent,li:isList(p),chk:p.checked,txt:plainText(p.body)});
   });
-  return {links:[...links],dates:[...dates],items,tags,head,n};
+  return {links:[...links],dates:[...dates],items,tags,head,n,refs:[...refs]};
 }
 const ownWrites=new Map();
 function setEntry(e,text,file){ Object.assign(e,indexText(text,e.name),{mtime:file.lastModified,size:file.size}); ownWrites.set(e.path,Date.now()); scheduleCache(); }
@@ -117,7 +117,7 @@ async function scanOnce(full,paths){
 function scheduleCache(){ clearTimeout(cacheTimer); cacheTimer=setTimeout(saveCache,3000); }
 function saveCache(){
   cacheTimer=0; if(!ws.dir) return; const notes={};
-  for(const [p,e] of vx.notes) notes[p]={mtime:e.mtime,size:e.size,ctime:e.ctime||null,links:e.links,dates:e.dates,items:e.items,tags:e.tags,head:e.head,n:e.n};
+  for(const [p,e] of vx.notes) notes[p]={mtime:e.mtime,size:e.size,ctime:e.ctime||null,links:e.links,dates:e.dates,items:e.items,tags:e.tags,head:e.head,n:e.n,refs:e.refs};
   idb.set('index','vault',{name:ws.dir.name,notes});
 }
 async function loadCache(){

@@ -59,6 +59,16 @@ function rowMatches(p,inherited,today,week){
   return true;
 }
 function dueOf(body){ const m=RE_DUE.exec(body); return m?m[1]:null; }
+/* the files a line links to that are not notes or web addresses: ![alt](path), [text](path), ![[file.png]], [[file.pdf]] */
+function linkRefs(text){
+  const out=[], re=/!?\[[^\]\n]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)|!?\[\[([^\]\n|#]+?)(?:[|#][^\]]*)?\]\]/g; let m;
+  while((m=re.exec(text))){
+    const t=decodeLink((m[1]!=null?m[1]:m[2]).trim()); if(!t||/^(https?:|data:|blob:|mailto:|file:)/i.test(t)) continue;
+    const base=t.split(/[?#]/)[0]; if(!/\.[A-Za-z0-9]{1,6}$/.test(base)||NOTE_EXT.test(base)) continue;
+    out.push(base);
+  }
+  return out;
+}
 /* YAML front matter: a --- on the first line, closed by the next --- (or ...). Returns the index after the closing line, or 0 */
 function frontMatterEnd(arr){
   const t=i=>arr[i]==null?null:(typeof arr[i]==='string'?arr[i]:arr[i].text);
