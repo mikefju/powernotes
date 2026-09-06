@@ -197,8 +197,8 @@ body.drag .main{outline:2px dashed var(--muted);outline-offset:-12px;border-radi
 /* a quiet line under the title: when the note was created and last saved, and whether it is a file from elsewhere */
 .docmeta{margin:-.55em 0 1.1em calc(2.3*var(--u));font-size:.72em;line-height:1.5;color:var(--muted);display:flex;flex-wrap:wrap;gap:.2em 1.1em;align-items:center;user-select:none;opacity:.85}
 .docmeta:empty{display:none}
-.docmeta .ext{color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);border-radius:1em;padding:0 .6em;cursor:pointer;opacity:1}
-.docmeta .ext:hover{background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.docmeta .ext,.docmeta .perm{font:inherit;background:transparent;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);border-radius:1em;padding:0 .6em;cursor:pointer;opacity:1}
+.docmeta .ext:hover,.docmeta .perm:hover{background:color-mix(in srgb,var(--warn) 12%,transparent)}
 .backlinks{margin-top:3em;padding-top:1em;border-top:1px solid var(--line);color:var(--muted);font-size:.85em}
 .backlinks a{color:var(--accent);text-decoration:none;cursor:pointer;margin-right:.8em}
 .backlinks a:hover{text-decoration:underline}

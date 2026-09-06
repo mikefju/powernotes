@@ -33,6 +33,21 @@ const PIN='<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path
 const FILTER_DEFAULTS={status:'all',due:'any',pri:'any',tags:[],parents:true,children:true,dim:false};
 const settings={zoom:1,hideDone:false,indentHeadings:true,side:{open:true,view:'files',w:240,tagSort:'count'},theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,fsort:'az',frontMatter:'fold',filter:Object.assign({on:false},FILTER_DEFAULTS)};
 let draftTimer=0;
+/* tabs closed in this session, newest last, so Reopen closed tab can bring them back */
+const closedTabs=[];
+function rememberClosed(d){
+  if(isBlank(d)) return;
+  closedTabs.push({name:d.name,handle:d.handle,wsPath:d.wsPath,text:d.handle?null:serializeLines(d.lines),ctime:d.ctime});
+  if(closedTabs.length>20) closedTabs.shift();
+}
+async function reopenClosed(){
+  const t=closedTabs.pop(); if(!t) return;
+  const e=t.wsPath&&vx.notes.get(t.wsPath);
+  if(e&&e.handle){ await openNote(e,'tab'); return; }
+  if(t.handle){ try{ const f=await t.handle.getFile(); await A().openInto(await f.text(),t.name,t.handle,{mtime:f.lastModified}); return; }catch(x){} }
+  if(t.text!=null){ A().newTab(t.name,t.text); A().D().ctime=t.ctime||Date.now(); renderTabsAll(); }
+  else reopenClosed();
+}
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 function newDoc(name,text){ return {id:uid(), name:name||'Untitled.md', lines:fromTextRaw(text||''), handle:null, dirty:false, undo:[], redo:[], sel:null, scroll:0, indentUnit:2, ctime:null, mtime:undefined, pinned:false, back:[], fwd:[]}; }
 function todayStr(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }

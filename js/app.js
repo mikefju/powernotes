@@ -35,7 +35,7 @@ document.addEventListener('keydown',e=>{
   if(e.altKey&&!mod){
     const k=e.key.toLowerCase();
     if(k==='n'){ e.preventDefault(); P.newTab(); }
-    else if(k==='w'){ e.preventDefault(); P.closeTab(P.cur); }
+    else if(k==='w'){ e.preventDefault(); if(e.shiftKey) reopenClosed(); else P.closeTab(P.cur); }
     else if(k==='f'||k==='e'||k==='v'){ e.preventDefault(); const name={f:'file',e:'edit',v:'view'}[k]; showMenu(name,menubar.querySelector('[data-menu="'+name+'"]'),true); }
     else if((e.key==='ArrowUp'||e.key==='ArrowDown')&&!inField&&!P.sourceOn()&&!P.agendaOn()){ e.preventDefault(); P.withSel(s=>P.moveBlock(s,e.key==='ArrowUp'?-1:1)); }
     else if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&!inField&&!P.sourceOn()&&!P.agendaOn()){ e.preventDefault(); P.withSel(s=>e.key==='ArrowLeft'?P.collapseCurrent(s):P.expandCurrent(s)); }
@@ -50,7 +50,8 @@ document.addEventListener('keydown',e=>{
   if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){ e.preventDefault(); if(e.key==='ArrowLeft') P.goBack(); else P.goForward(); return; }
   const k=e.key.toLowerCase();
   if(k==='s'){ e.preventDefault(); P.saveFile(e.shiftKey); }
-  else if(k==='o'&&!e.shiftKey){ e.preventDefault(); openFile(); }
+  else if(k==='o'&&!e.shiftKey){ e.preventDefault(); if(e.altKey) openFile(); else openSwitcher(); }
+  else if(k==='t'&&e.shiftKey){ e.preventDefault(); reopenClosed(); }
   else if(k==='o'&&e.shiftKey){ e.preventDefault(); showView('outline',true); }
   else if(k==='e'&&e.shiftKey){ e.preventDefault(); showView('files',true); }
   else if(k==='b'&&e.shiftKey){ e.preventDefault(); toggleSide(); }

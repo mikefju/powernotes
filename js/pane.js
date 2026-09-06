@@ -1031,7 +1031,14 @@ function renderTabs(){
 /* the line under the title: where the file stands, when it was created and when it was last saved */
 function renderMeta(){
   const d=D(); docMeta.replaceChildren(); if(!d) return;
-  if(isExternal(d)){ const b=el('button','ext'); b.type='button'; b.textContent='Outside '+ws.dir.name; b.title='This file is not in the open folder, so it is saved with Ctrl+S rather than as you type. Click for options.'; docMeta.append(b); }
+  if(isExternal(d)){ const b=el('button','ext'); b.type='button'; b.textContent='Outside '+ws.dir.name; b.title='This file is not in the open folder. Click for options.'; docMeta.append(b); }
+  /* a file the browser will not let PowerNotes write without asking cannot be saved as you type until it is allowed once */
+  if(d.handle&&settings.autosave) d.handle.queryPermission({mode:'readwrite'}).then(s=>{
+    if(s==='granted'||D()!==d||docMeta.querySelector('.perm')) return;
+    const b=el('button','perm'); b.type='button'; b.textContent='Allow saving as you type'; b.title='The browser needs your permission once before edits to this file can be written as you type.';
+    b.onclick=async()=>{ if(await ensurePerm(d.handle,'readwrite')){ b.remove(); scheduleAutosave(); } };
+    docMeta.append(b);
+  }).catch(()=>{});
   const add=(lab,t)=>{ const s=el('span'); s.textContent=lab+' '+fmtDT.format(t); s.title=new Date(t).toString(); docMeta.append(s); };
   if(d.ctime) add('Created',d.ctime);
   if(d.handle&&d.mtime) add('Modified',d.mtime); else if(!d.handle&&d.ctime&&!isBlank(d)){ const s=el('span'); s.textContent='Not saved as a file yet'; docMeta.append(s); }
@@ -1094,7 +1101,7 @@ function closeTab(k){
   if(sourceOn&&k===cur) setSource(false);
   if(agendaOn) setAgenda(false);
   if(k===cur) saveDocState();
-  if(!elsewhere){ idb.del('handles',d.id); discardEmpty(d); }
+  if(!elsewhere){ rememberClosed(d); idb.del('handles',d.id); discardEmpty(d); }
   docs.splice(k,1); if(!docs.length){ if(panes.length>1){ closePane(P); return; } docs.push(newDoc()); }
   if(k<cur) cur--; else if(k===cur) cur=Math.min(k,docs.length-1);
   loadDocState(); if(lastSel) setSel(lastSel.a,lastSel.f); scheduleDraft();

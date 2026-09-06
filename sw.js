@@ -66,6 +66,13 @@ self.addEventListener('fetch', e => {
       } catch (err) {}
       return (await cache.match('./index.html')) || Response.error();
     }
+    if (/\.(js|css)$/.test(url.pathname)) {
+      try {
+        const res = await withTimeout(fetch(req), 3000);
+        if (res && res.ok) { cache.put(req, res.clone()); return res; }
+      } catch (err) {}
+      const hit = await cache.match(req); if (hit) return hit;
+    }
     const cached = await cache.match(req);
     const network = fetch(req).then(res => {
       if (res && res.ok && res.type === 'basic') cache.put(req, res.clone());

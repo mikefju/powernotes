@@ -40,10 +40,20 @@ async function walkTree(dir){
 /* what the rest of the app wants to know about a note without opening it */
 function indexText(text,name){
   const links=new Set(), dates=new Set(), items=[], tags={}, head=[], title=baseOf(name).toLowerCase(); let inF=false, n=0;
-  text.split('\n').forEach((t,j)=>{
+  const arr=text.split('\n'), fmEnd=frontMatterEnd(arr);
+  const bump=(label)=>{ label=label.replace(/^#/,''); if(!/^[A-Za-z_][\w\-\/]*$/.test(label)) return; const k=label.toLowerCase(); if(tags[k]) tags[k][1]++; else tags[k]=[label,1]; };
+  /* tags in the front matter: tags: a, b  or  tags: [a, b]  or a YAML list under tags: */
+  for(let j=1,list=false;j<fmEnd-1;j++){
+    const t=arr[j]; let m;
+    if((m=/^tags?\s*:\s*(.*)$/i.exec(t))){ list=!m[1].trim(); for(const x of m[1].replace(/[\[\]"']/g,' ').split(/[,\s]+/)) if(x) bump(x); }
+    else if(list&&(m=/^\s*-\s*(.+)$/.exec(t))) bump(m[1].trim().replace(/["']/g,''));
+    else list=false;
+  }
+  arr.forEach((t,j)=>{
+    if(j<fmEnd) return;
     if(RE_FENCE.test(t)){ inF=!inF; return; } if(inF) return;
     let m; const rl=/\[\[([^\]\n]+?)\]\]/g; while((m=rl.exec(t))) links.add(baseOf(m[1].trim()).toLowerCase());
-    RE_TAG.lastIndex=0; while((m=RE_TAG.exec(t))){ const k=m[1].toLowerCase(); if(tags[k]) tags[k][1]++; else tags[k]=[m[1],1]; }
+    RE_TAG.lastIndex=0; while((m=RE_TAG.exec(t))) bump(m[1]);
     const rd=/@(\d{4}-\d{2}-\d{2})(?![\w-])/g; while((m=rd.exec(t))) dates.add(m[1]);
     if(!t.trim()) return;
     const p=parse(t);
@@ -245,16 +255,17 @@ async function discardEmpty(d){
   try{ if(!(await (await d.handle.getFile()).text()).trim()){ await dir.handle.removeEntry(d.name); vx.notes.delete(d.wsPath); requestScan(false,null,0); } }catch(e){}
 }
 /* edits to files in the folder are written about a second after the last keystroke */
-function scheduleAutosave(){ if(!settings.autosave||!ws.dir) return; clearTimeout(autoTimer); autoTimer=setTimeout(autosave,1000); }
+/* edits to any file on disk are written about a second after the last keystroke, in the folder or not, as long
+   as the file may be written without asking; a file that needs permission first keeps its dot until Ctrl+S */
+function scheduleAutosave(){ if(!settings.autosave) return; clearTimeout(autoTimer); autoTimer=setTimeout(autosave,1000); }
 async function autosave(){
-  autoTimer=0; if(!settings.autosave||!ws.dir) return;
+  autoTimer=0; if(!settings.autosave) return;
   if(autoBusy||vx.busy||panes.some(p=>p.composing())){ scheduleAutosave(); return; }
   autoBusy=true; let changed=false;
   try{
     for(const d of allDocs()){
       if(!d.dirty||!d.handle) continue;
-      if(d.wsPath===undefined) d.wsPath=await pathIn(ws.dir,d.handle);
-      if(!d.wsPath) continue;
+      if(ws.dir&&vx.perm&&d.wsPath===undefined) d.wsPath=await pathIn(ws.dir,d.handle);
       try{ if((await d.handle.queryPermission({mode:'readwrite'}))!=='granted') continue; if(await writeDoc(d)) changed=true; else scheduleAutosave(); }
       catch(e){ console.warn('autosave',e); }
     }
