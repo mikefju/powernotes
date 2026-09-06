@@ -1315,7 +1315,7 @@ Object.assign(P,{root,tabsEl,tabBar,main,find,cmd,
   init(arr,k){ docs=arr; cur=Math.max(0,Math.min(k||0,arr.length-1)); loadDocState(); },
   render,renderTabs,renderBacklinks,renderAgenda,renderOutline,renderFilterBar,renderMeta,refresh,refreshMedia,reload,flush,applySpell,scheduleCrumb,
   newTab,closeTab,switchTab,cycleTab,moveTab,moveTabTo,startRename,openInto,addDocs,replaceCur,canReplace,goBack,goForward,togglePin,
-  saveFile,exportHtml,setSource,setAgenda,withSel,restoreSel,refocus:refocusSel,focusEditor,dismiss,
+  saveFile,exportHtml,setSource,setAgenda,withSel,restoreSel,refocus:refocusSel,focusEditor,dismiss,insertText:t=>withSel(s=>doInsert(s,t)),
   doUndo,doRedo,openFind,closeFind,runFind,findStep,replaceOne,replaceAll,
   foldAll,collapseCurrent,expandCurrent,duplicateLines,moveBlock,revealRow,revealRange,insertImages,rowAt,
   detach,attach,closeClean,destroy});

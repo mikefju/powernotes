@@ -10,9 +10,14 @@ function applySettings(){
 function openSettings(){
   $('setTheme').value=settings.theme; $('setFont').value=settings.font; $('setSpell').value=settings.spell?'on':'off'; $('setLang').value=settings.lang; $('setSync').value=settings.sync?'on':'off'; $('setAutosave').value=settings.autosave?'on':'off';
   $('setFm').value=settings.frontMatter;
+  $('setDailyFolder').value=settings.daily.folder; $('setDailyFormat').value=settings.daily.format; $('setDailyTpl').value=settings.daily.template; $('setTplFolder').value=settings.templates.folder;
   settingsDlg.showModal();
 }
 $('setFm').addEventListener('change',e=>{ settings.frontMatter=e.target.value; renderAll(); scheduleDraft(); });
+$('setDailyFolder').addEventListener('change',e=>{ settings.daily.folder=e.target.value.trim(); scheduleDraft(); });
+$('setDailyFormat').addEventListener('change',e=>{ settings.daily.format=e.target.value.trim()||'YYYY-MM-DD'; e.target.value=settings.daily.format; scheduleDraft(); });
+$('setDailyTpl').addEventListener('change',e=>{ settings.daily.template=e.target.value.trim(); scheduleDraft(); });
+$('setTplFolder').addEventListener('change',e=>{ settings.templates.folder=e.target.value.trim()||'Templates'; e.target.value=settings.templates.folder; scheduleDraft(); });
 $('setTheme').addEventListener('change',e=>{ settings.theme=e.target.value; applySettings(); scheduleDraft(); });
 $('setFont').addEventListener('change',e=>{ settings.font=e.target.value; applySettings(); scheduleDraft(); });
 $('setSpell').addEventListener('change',e=>{ settings.spell=e.target.value==='on'; applySettings(); scheduleDraft(); });
@@ -59,6 +64,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='p'&&!e.shiftKey){ e.preventDefault(); window.print(); }
   else if(k==='p'&&e.shiftKey){ e.preventDefault(); if(pal.open) closePalette(true); else openPalette(); }
   else if(k==='a'&&e.shiftKey){ e.preventDefault(); P.setAgenda(!P.agendaOn()); }
+  else if(k==='d'&&e.altKey&&!e.shiftKey){ e.preventDefault(); openDaily(0); }
   else if(k==='d'&&!e.shiftKey&&!inField&&!P.sourceOn()&&!P.agendaOn()){ e.preventDefault(); P.withSel(P.duplicateLines); }
   else if(k==='f'&&!e.shiftKey){ e.preventDefault(); P.openFind(false); }
   else if(k==='f'&&e.shiftKey){ e.preventDefault(); showView('search',true); }
@@ -131,6 +137,10 @@ function loadDraft(){
     if(typeof sd.open==='boolean') side.open=sd.open; if(SIDE_VIEWS.includes(sd.view)) side.view=sd.view; if(typeof sd.w==='number') side.w=sd.w; if(sd.tagSort==='name'||sd.tagSort==='count') side.tagSort=sd.tagSort;
     if(!FSORTS.some(x=>x[0]===settings.fsort)) settings.fsort='az';
     if(!['fold','show','hide'].includes(settings.frontMatter)) settings.frontMatter='fold';
+    const str=(v,dflt)=>typeof v==='string'?v:dflt;
+    const dl=settings.daily||{}, tp=settings.templates||{};
+    settings.daily={folder:str(dl.folder,'Daily'),format:str(dl.format,'YYYY-MM-DD')||'YYYY-MM-DD',template:str(dl.template,'')};
+    settings.templates={folder:str(tp.folder,'Templates')||'Templates'};
     const f=Object.assign({on:false},FILTER_DEFAULTS,(st.filter&&typeof st.filter==='object')?st.filter:{});
     if(!Array.isArray(f.tags)) f.tags=[]; f.tags=f.tags.filter(t=>typeof t==='string');
     if(!['all','open','done'].includes(f.status)) f.status='all';

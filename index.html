@@ -246,6 +246,13 @@
   <label class="f">Follow changes to the folder on disk <select id="setSync"><option value="on">On</option><option value="off">Off</option></select></label>
   <label class="f">Save notes in the folder as you type <select id="setAutosave"><option value="on">On</option><option value="off">Off</option></select></label>
   <p class="hint">With following on, notes added, changed, renamed or removed in the folder by other programs show up in the files pane and the tabs a moment later. With saving as you type, edits reach the file about a second after you pause; otherwise Ctrl+S writes them.</p>
+  <h3>Daily notes and templates</h3>
+  <label class="f">Daily notes folder <input type="text" id="setDailyFolder" placeholder="Daily" spellcheck="false"></label>
+  <label class="f">Daily note name <input type="text" id="setDailyFormat" placeholder="YYYY-MM-DD" spellcheck="false"></label>
+  <label class="f">Daily note template <input type="text" id="setDailyTpl" placeholder="Name of a note in the templates folder" spellcheck="false"></label>
+  <label class="f">Templates folder <input type="text" id="setTplFolder" placeholder="Templates" spellcheck="false"></label>
+  <p class="hint">Folders are inside the open folder and are created when first needed. The name can use YYYY, MM, DD, MMM, MMMM, ddd and dddd (a slash makes a subfolder, e.g. YYYY/MM/YYYY-MM-DD). Templates can use {{date}}, {{time}}, {{title}} and {{date:MMM D}}.</p>
+  <h3>Editor</h3>
   <label class="f">Front matter <select id="setFm"><option value="fold">Folded (Properties)</option><option value="show">Shown in full</option><option value="hide">Hidden</option></select></label>
   <p class="hint">YAML between --- lines at the top of a note. Folded shows it as one Properties row that opens with a click; hidden keeps it in the file but out of view.</p>
   <label class="f">Spellcheck <select id="setSpell"><option value="on">On</option><option value="off">Off</option></select></label>
@@ -278,6 +285,7 @@
 <script src="js/sidebar.js"></script>
 <script src="js/search.js"></script>
 <script src="js/tags.js"></script>
+<script src="js/daily.js"></script>
 <script src="js/workspaces.js"></script>
 <script src="js/menus.js"></script>
 <script src="js/app.js"></script>
