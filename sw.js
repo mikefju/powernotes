@@ -1,9 +1,29 @@
 /* PowerNotes service worker: precache the app shell so it opens offline,
    refresh the shell in the background, and hand the page a "new version" signal. */
-const VERSION = 'pn-v7';
+const VERSION = 'pn-v9';
 const SHELL = [
   './',
   './index.html',
+  './css/app.css',
+  './js/state.js',
+  './js/idb.js',
+  './js/model.js',
+  './js/panes.js',
+  './js/pane.js',
+  './js/media.js',
+  './js/shared.js',
+  './js/palette.js',
+  './js/disk.js',
+  './js/vault.js',
+  './js/files.js',
+  './js/sidebar.js',
+  './js/search.js',
+  './js/tags.js',
+  './js/daily.js',
+  './js/attachments.js',
+  './js/workspaces.js',
+  './js/menus.js',
+  './js/app.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -29,8 +49,9 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
-/* Same-origin GETs only. The page itself is fetched network-first (so edits show on the next load) with the
-   cached copy as the offline fallback; other assets are served from cache and refreshed in the background. */
+/* Same-origin GETs only. The page and its scripts and styles are fetched network-first, so a deploy shows on the
+   next load and the files always match each other, with the cached copy as the offline fallback; other assets
+   are served from cache and refreshed in the background. */
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -46,6 +67,13 @@ self.addEventListener('fetch', e => {
         if (res && res.ok) { cache.put('./index.html', res.clone()); return res; }
       } catch (err) {}
       return (await cache.match('./index.html')) || Response.error();
+    }
+    if (/\.(js|css)$/.test(url.pathname)) {
+      try {
+        const res = await withTimeout(fetch(req), 3000);
+        if (res && res.ok) { cache.put(req, res.clone()); return res; }
+      } catch (err) {}
+      const hit = await cache.match(req); if (hit) return hit;
     }
     const cached = await cache.match(req);
     const network = fetch(req).then(res => {
