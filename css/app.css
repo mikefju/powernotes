@@ -238,6 +238,11 @@ body.drag .main{outline:2px dashed var(--muted);outline-offset:-12px;border-radi
 .row.code .content{font-family:var(--mono);font-size:.9em;padding:.2em .6em}
 .row.fence .content{color:var(--muted)}
 .row.code+.row:not(.code) {margin-top:.3em}
+/* front matter: a quiet block of key: value rows, folded under its first --- as "Properties" */
+.row.fm .content{font-family:var(--mono);font-size:.85em;color:var(--muted);padding:.15em .6em}
+.row.fm .content .fmk{color:var(--text);opacity:.75}
+.row.fm.fence .content{opacity:.6}
+.row.fm+.row:not(.fm){margin-top:.6em}
 .chev{flex:none;border:0;background:transparent;width:var(--u);height:calc(1.1*var(--u));padding:0;cursor:pointer;color:var(--muted);opacity:0;display:grid;place-items:center;border-radius:4px}
 .row:hover .chev,.row.collapsed .chev{opacity:1}
 .chev:hover{background:var(--hover)}

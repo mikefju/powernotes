@@ -8,7 +8,7 @@ const tabsEl=el('div','tabs'); tabsEl.setAttribute('role','tablist');
 const ctl=new AbortController(), sig={signal:ctl.signal}, sigP={signal:ctl.signal,passive:true};
 panesEl.append(root);
 editor.contentEditable=PLAIN?'plaintext-only':'true';
-let docs=[], cur=0, lines=[], fenced=[], hiddenArr=[], dimArr=[], indentUnit=2;
+let docs=[], cur=0, lines=[], fenced=[], hiddenArr=[], dimArr=[], indentUnit=2, fmEnd=0;
 let undo=[], redo=[];
 let filterStats={match:0,total:0};
 let typing=false, typingTimer=0, srcTimer=0, mouseDown=false, composing=false, lastSel=null, sourceOn=false;
@@ -18,14 +18,17 @@ const find={open:false, query:'', cs:false, matches:[], idx:-1};
 const parse=t=>parseLine(t,indentUnit), build=p=>buildLine(p,indentUnit);
 function D(){ return docs[cur]; }
 function setLines(arr){ lines=arr; D().lines=arr; }
+/* code inside a fence and the front matter are raw rows: the text as it is, never a heading, a list or a chip */
 function parseAt(i){
-  if(fenced[i]) return {type:'p',level:0,indent:0,checked:null,body:lines[i].text,raw:true};
+  if(fenced[i]||i<fmEnd) return {type:'p',level:0,indent:0,checked:null,body:lines[i].text,raw:true};
   return parse(lines[i].text);
 }
 function computeFences(){
-  fenced=new Array(lines.length).fill(false); let inF=false;
-  for(let i=0;i<lines.length;i++){ const f=RE_FENCE.test(lines[i].text); fenced[i]=inF||f; if(f) inF=!inF; }
+  fenced=new Array(lines.length).fill(false); let inF=false; fmEnd=frontMatterEnd(lines);
+  for(let i=fmEnd;i<lines.length;i++){ const f=RE_FENCE.test(lines[i].text); fenced[i]=inF||f; if(f) inF=!inF; }
 }
+/* the front matter folds as one block under its first --- unless the setting shows it in full */
+const fmFold=()=>fmEnd>0&&settings.frontMatter!=='show';
 function allTags(){
   const m=new Map();
   lines.forEach((l,i)=>{ if(fenced[i]) return; RE_TAG.lastIndex=0; let x; const body=parse(l.text).body; while((x=RE_TAG.exec(body))){ const k=x[1].toLowerCase(), e=m.get(k); if(e) e.n++; else m.set(k,{k,label:x[1],n:1}); } });
@@ -44,6 +47,7 @@ function renumber(){
   }
 }
 function sectionEnd(i){
+  if(i===0&&fmFold()) return fmEnd;
   const p=parseAt(i);
   if(p.type==='h'){ let j=i+1; while(j<lines.length){ const q=parseAt(j); if(q.type==='h'&&q.level<=p.level) break; j++; } return j; }
   if(isList(p)){
@@ -53,7 +57,7 @@ function sectionEnd(i){
   }
   return i+1;
 }
-function collapsible(i){ const p=parseAt(i); return p.type==='h'||(isList(p)&&sectionEnd(i)>i+1); }
+function collapsible(i){ if(i===0&&fmFold()) return true; const p=parseAt(i); return p.type==='h'||(isList(p)&&sectionEnd(i)>i+1); }
 function taskStats(i){ let total=0, done=0; for(let j=i+1,e=sectionEnd(i);j<e;j++){ const q=parseAt(j); if(q.checked!=null){ total++; if(q.checked) done++; } } return {total,done}; }
 /* a row's span is itself plus, when it is collapsed, everything folded under it */
 function spanEnd(i){ return lines[i].collapsed&&collapsible(i)?Math.max(i+1,sectionEnd(i)):i+1; }
@@ -64,6 +68,7 @@ function computeHidden(){
     const fold=lines[i].collapsed&&collapsible(i), done=settings.hideDone&&p.checked===true;
     if(fold||done){ const e=sectionEnd(i); for(let j=done?i:i+1;j<e;j++) hidden[j]=true; }
   }
+  if(fmEnd&&settings.frontMatter==='hide'&&fmEnd<n) for(let j=0;j<fmEnd;j++) hidden[j]=true;
   dimArr=new Array(n).fill(false); filterStats={match:0,total:n};
   if(filterActive()){
     const f=settings.filter, keep=new Array(n).fill(false), today=todayStr(), week=shiftDate(7), stack=[];
@@ -84,6 +89,7 @@ function fromText(text,keepCollapsed){
 function serialize(){ return serializeLines(lines); }
 function rowRender(i){
   const p=parseAt(i);
+  if(i>0&&i<fmEnd-1){ const m=/^(\s*[^\s:#-][^:]*:)([\s\S]*)$/.exec(p.body); if(m) return {html:'<span class="fmk">'+esc(m[1])+'</span>'+esc(m[2]),map:idMap(p.body.length)}; }
   if(p.raw) return {html:esc(p.body),map:idMap(p.body.length)};
   return inline(p.body);
 }
@@ -113,7 +119,8 @@ function render(){
     if(hiddenArr[i]) row.classList.add('hidden');
     if(dimArr[i]) row.classList.add('dim');
     if(settings.indentHeadings&&hd) row.style.setProperty('--hd',hd);
-    if(p.raw){ row.classList.add('code'); if(RE_FENCE.test(l.text)) row.classList.add('fence'); }
+    if(i<fmEnd){ row.classList.add('fm'); if(i===0||i===fmEnd-1) row.classList.add('fence'); }
+    else if(p.raw){ row.classList.add('code'); if(RE_FENCE.test(l.text)) row.classList.add('fence'); }
     if(p.type==='q') row.classList.add('q');
     const g=el('div','gutter'), c=el('div','content');
     g.contentEditable='false';
@@ -122,7 +129,8 @@ function render(){
     if(collapsible(i)){
       foldState.any=true; if(l.collapsed) row.classList.add('collapsed'); else foldState.anyExpanded=true;
       const b=el('button','chev'); b.type='button'; b.tabIndex=-1; b.setAttribute('aria-label',l.collapsed?'Expand':'Collapse'); b.innerHTML=CHEV; g.append(b);
-      if(l.collapsed){ let k=0; for(let j=i+1,e=sectionEnd(i);j<e;j++) if(lines[j].text.trim()) k++; meta.push(k===1?'1 line':k+' lines'); }
+      if(i===0&&fmFold()) meta.push('Properties'+(l.collapsed?' · '+Math.max(0,fmEnd-2):''));
+      else if(l.collapsed){ let k=0; for(let j=i+1,e=sectionEnd(i);j<e;j++) if(lines[j].text.trim()) k++; meta.push(k===1?'1 line':k+' lines'); }
     }
     if(p.type==='h'){ row.classList.add('h'+p.level); const t=taskStats(i); if(t.total) meta.push(Math.round(100*t.done/t.total)+'%'); }
     else {

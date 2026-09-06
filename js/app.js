@@ -9,8 +9,10 @@ function applySettings(){
 }
 function openSettings(){
   $('setTheme').value=settings.theme; $('setFont').value=settings.font; $('setSpell').value=settings.spell?'on':'off'; $('setLang').value=settings.lang; $('setSync').value=settings.sync?'on':'off'; $('setAutosave').value=settings.autosave?'on':'off';
+  $('setFm').value=settings.frontMatter;
   settingsDlg.showModal();
 }
+$('setFm').addEventListener('change',e=>{ settings.frontMatter=e.target.value; renderAll(); scheduleDraft(); });
 $('setTheme').addEventListener('change',e=>{ settings.theme=e.target.value; applySettings(); scheduleDraft(); });
 $('setFont').addEventListener('change',e=>{ settings.font=e.target.value; applySettings(); scheduleDraft(); });
 $('setSpell').addEventListener('change',e=>{ settings.spell=e.target.value==='on'; applySettings(); scheduleDraft(); });
@@ -127,6 +129,7 @@ function loadDraft(){
     const sd=(st.side&&typeof st.side==='object')?st.side:{open:st.files!==false||!!st.outline,view:st.outline&&st.files===false?'outline':'files',w:st.fw}, side=settings.side;
     if(typeof sd.open==='boolean') side.open=sd.open; if(SIDE_VIEWS.includes(sd.view)) side.view=sd.view; if(typeof sd.w==='number') side.w=sd.w; if(sd.tagSort==='name'||sd.tagSort==='count') side.tagSort=sd.tagSort;
     if(!FSORTS.some(x=>x[0]===settings.fsort)) settings.fsort='az';
+    if(!['fold','show','hide'].includes(settings.frontMatter)) settings.frontMatter='fold';
     const f=Object.assign({on:false},FILTER_DEFAULTS,(st.filter&&typeof st.filter==='object')?st.filter:{});
     if(!Array.isArray(f.tags)) f.tags=[]; f.tags=f.tags.filter(t=>typeof t==='string');
     if(!['all','open','done'].includes(f.status)) f.status='all';
