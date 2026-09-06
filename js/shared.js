@@ -24,6 +24,7 @@ fParents.addEventListener('click',()=>setFilter({parents:!settings.filter.parent
 fChildren.addEventListener('click',()=>setFilter({children:!settings.filter.children}));
 fDim.addEventListener('click',()=>setFilter({dim:!settings.filter.dim}));
 $('fClear').addEventListener('click',()=>setFilter(Object.assign({},FILTER_DEFAULTS,{tags:[]})));
+$('fToday').addEventListener('click',()=>setFilter({on:true,status:'open',due:'due',pri:'any',tags:[]}));
 $('fClose').addEventListener('click',closeFilter);
 filterBar.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); closeFilter(); } });
 

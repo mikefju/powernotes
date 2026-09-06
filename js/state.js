@@ -5,7 +5,7 @@ const helpDlg=$('help'), settingsDlg=$('settings'), accessDlg=$('access'), menub
 const filterBar=$('filterBar'), fStatus=$('fStatus'), fDue=$('fDue'), fPri=$('fPri'), fTags=$('fTags'), fCount=$('fCount'), fParents=$('fParents'), fChildren=$('fChildren'), fDim=$('fDim');
 const headerEl=$('header'), palEl=$('pal'), palInput=$('palInput'), palList=$('palList'), panesEl=$('panes'), tabSlot=$('tabSlot'), paneTpl=$('paneTpl'), fileInput=$('file'), outlineEl=$('outline'), wsDlg=$('wsDlg');
 const KEY='mdnotes.v2', OLDKEY='mdnotes.draft';
-const APP_VERSION='1.2.0'; $('ver').textContent='v'+APP_VERSION;
+const APP_VERSION='1.3.0'; $('ver').textContent='v'+APP_VERSION;
 const CHEV='<svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M3 1l5 4-5 4z"/></svg>';
 const WELCOME=`# Welcome
 Each line is a row. Hover a row and click the box beside it to check it off.
@@ -23,7 +23,7 @@ Each line is a row. Hover a row and click the box beside it to check it off.
 4. **Bold**, *italic* and \`code\` stay formatted while you type; put the caret on a word to edit its markers
 5. Link to another tab with [[Ideas]] and it appears under **Linked from** on that tab
 6. Add #tags anywhere, and mark priority with ! or !! anywhere on a line
-7. The **View** menu has an outline, an agenda of dated items across tabs, a filter for open items, due dates, priority and tags, and settings. **Help** lists every shortcut, and Ctrl+Shift+P finds any command by name
+7. Open a folder of notes with **File › Open folder…** and the sidebar shows its files, a search across all of them, every tag, and this note's outline. Ctrl+O opens any note by name, Ctrl+Shift+A shows an agenda of dated items, and **Help** lists every shortcut
 `;
 const PLAIN=(()=>{try{const d=document.createElement('div');d.contentEditable='plaintext-only';return d.contentEditable==='plaintext-only';}catch(e){return false;}})();
 const HL=('highlights' in CSS)&&typeof Highlight==='function';

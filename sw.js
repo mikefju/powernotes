@@ -1,6 +1,6 @@
 /* PowerNotes service worker: precache the app shell so it opens offline,
    refresh the shell in the background, and hand the page a "new version" signal. */
-const VERSION = 'pn-v8';
+const VERSION = 'pn-v9';
 const SHELL = [
   './',
   './index.html',
@@ -19,6 +19,8 @@ const SHELL = [
   './js/sidebar.js',
   './js/search.js',
   './js/tags.js',
+  './js/daily.js',
+  './js/attachments.js',
   './js/workspaces.js',
   './js/menus.js',
   './js/app.js',
