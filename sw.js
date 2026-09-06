@@ -1,6 +1,6 @@
 /* PowerNotes service worker: precache the app shell so it opens offline,
    refresh the shell in the background, and hand the page a "new version" signal. */
-const VERSION = 'pn-v5';
+const VERSION = 'pn-v6';
 const SHELL = [
   './',
   './index.html',

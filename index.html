@@ -21,7 +21,7 @@
   --accent:#4b7cd6; --danger:#cf5a52; --warn:#b98a2c;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace;
-  --zoom:1; --u:calc(1rem*var(--zoom)); --indent:calc(1.5*var(--u)); --ow:15rem;
+  --zoom:1; --u:calc(1rem*var(--zoom)); --indent:calc(1.5*var(--u)); --ow:15rem; --fw:240px;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme=light]){color-scheme:dark;--bg:#171a1e;--panel:#1f2329;--text:#d9dde3;--muted:#8d95a1;--line:#323840;--hover:#2c323a;--well:#2a3037;--accent:#86aaea;--danger:#e2807a;--warn:#d0a44c}
@@ -39,6 +39,8 @@ header{position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px
 .menuwrap{flex:none;display:flex;align-items:center;align-self:stretch}
 /* with the outline open the tabs start where the page does */
 body:has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--ow) - 11px)}
+body:has(#files:not([hidden])) .menuwrap{min-width:calc(var(--fw) - 11px)}
+body:has(#files:not([hidden])):has(#outline:not([hidden])) .menuwrap{min-width:calc(var(--fw) + var(--ow) - 11px)}
 .brand{color:var(--muted);font-size:12.5px;padding:0 10px;letter-spacing:.02em;user-select:none;align-self:center}
 .brand .ver{opacity:.65;font-size:11.5px}
 .menubar{display:flex;flex:none;position:relative}
@@ -117,6 +119,31 @@ body.altnav .menu u,.menu.kb u{text-decoration:underline;text-underline-offset:2
 .outline .oi:hover{background:var(--hover);color:var(--text)}
 .outline .oi.cur{color:var(--text);background:var(--well)}
 .outline .oe{color:var(--muted);padding:0 8px;font-style:italic}
+/* the files pane: the open folder as a tree, folders first, notes without their .md */
+.files{position:sticky;top:var(--hdr,72px);flex:none;width:var(--fw);height:calc(100vh - var(--hdr,72px));display:flex;flex-direction:column;font-size:13px;background:var(--panel);border-right:1px solid var(--line)}
+.files .fh{display:flex;align-items:center;gap:1px;padding:12px 6px 4px 14px;min-height:36px}
+.files .fh .fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;user-select:none}
+.files .fh .btn{padding:3px 5px;min-width:0;display:none}
+.files.ready .fh .btn{display:block}
+.files .fh .btn svg{width:15px;height:15px;display:block}
+.ftree{flex:1;overflow:auto;padding:0 6px 24px;outline:none;border-radius:6px}
+.ftree.drop{box-shadow:inset 0 0 0 2px var(--accent)}
+.fr{display:flex;align-items:center;gap:3px;padding:2px 6px 2px calc(4px + var(--d,0)*14px);border-radius:6px;color:var(--muted);white-space:nowrap;cursor:default;user-select:none;line-height:1.5}
+.fr:hover{background:var(--hover);color:var(--text)}
+.fr.cur{background:var(--well);color:var(--text)}
+.fr.dir{color:var(--text)}
+.ftree:focus-visible .fr.sel{box-shadow:inset 0 0 0 1px var(--accent)}
+.fr .fchev{flex:none;width:14px;height:14px;display:grid;place-items:center;color:var(--muted)}
+.fr .fchev svg{width:8px;height:8px;transition:transform .12s}
+.fr.open .fchev svg{transform:rotate(90deg)}
+.fr.file{padding-left:calc(21px + var(--d,0)*14px)}
+.fr .fn{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fr.drop{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text)}
+.fr.dragging{opacity:.4}
+.fr input.frename{font:inherit;border:1px solid var(--accent);background:var(--bg);color:var(--text);border-radius:4px;padding:0 4px;outline:none;min-width:0;flex:1;line-height:1.4}
+.files .fempty{padding:6px 10px;color:var(--muted);line-height:1.5;white-space:normal}
+.files .fempty .btn{border:1px solid var(--line);color:var(--text);margin-top:8px;cursor:pointer}
+.fresize{position:absolute;top:0;right:-3px;width:6px;height:100%;cursor:col-resize;z-index:1}
 main{flex:1;min-width:0;padding:20px 32px 50vh 12px;min-height:100vh;font-size:var(--u)}
 body.drag main{outline:2px dashed var(--muted);outline-offset:-12px;border-radius:12px}
 #editor{outline:none}
@@ -251,7 +278,7 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 .dlg .hint{color:var(--muted);font-size:12.5px;line-height:1.45;margin:4px 0 0}
 [hidden]{display:none!important}
 @media print{
-  header,.outline,.backlinks,.find,.fbar,.pop,.ac,.handle,.chev,.crumb,.preview,.pal{display:none!important}
+  header,.files,.outline,.backlinks,.find,.fbar,.pop,.ac,.handle,.chev,.crumb,.preview,.pal{display:none!important}
   .content[data-meta]::after{content:none}
   .row.dim{opacity:1}
   body{background:#fff;color:#000}
@@ -358,6 +385,16 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
   <div class="plist" id="palList" role="listbox"></div>
 </div>
 <div class="app">
+<aside class="files" id="files" hidden aria-label="Files">
+  <div class="fh">
+    <span class="fname" id="fName">Files</span>
+    <button class="btn icon" id="fNew" type="button" title="New note"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z"/><path d="M9.5 1.5V5H13"/><path d="M8.5 7.5v4M6.5 9.5h4" stroke-linecap="round"/></svg></button>
+    <button class="btn icon" id="fNewDir" type="button" title="New folder"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 3.5h4l1.5 1.5h7.5v8h-13z"/><path d="M8 7.5v4M6 9.5h4" stroke-linecap="round"/></svg></button>
+    <button class="btn icon" id="fFold" type="button" title="Collapse all"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l4-3 4 3M4 12.5l4-3 4 3"/></svg></button>
+  </div>
+  <div class="ftree" id="fTree" role="tree" tabindex="0" aria-label="Notes in the folder"></div>
+  <div class="fresize" id="fResize" title="Drag to resize"></div>
+</aside>
 <aside class="outline" id="outline" hidden aria-label="Outline"></aside>
 <main id="main">
   <h1 class="doctitle" id="docTitle" title="Double-click to rename"></h1>
@@ -368,7 +405,7 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 </main>
 </div>
 <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown,text/plain" multiple hidden>
-<input type="file" id="dirInput" webkitdirectory multiple hidden>
+
 <dialog id="help">
 <div class="dlg">
   <h2>PowerNotes help</h2>
@@ -415,15 +452,16 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
     <tr><td><kbd>Alt</kbd>+<kbd>F</kbd> <kbd>E</kbd> <kbd>V</kbd></td><td>Open a menu. Arrow keys move, the underlined letter or <kbd>Enter</kbd> chooses, <kbd>→</kbd> opens a submenu, <kbd>Esc</kbd> closes</td></tr>
     <tr><td>Right-click</td><td>Menu of the common line actions. <kbd>Shift</kbd>+right-click keeps the browser's own menu, with its spelling suggestions</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>Save / save as. Opened files are remembered, so Save writes straight back</td></tr>
-    <tr><td>File › Open folder…</td><td>Choose a notes folder. Its files are listed in the File menu, new notes save into it without a dialog, and <code>[[links]]</code> open or create files there</td></tr>
+    <tr><td>File › Open folder…</td><td>Open a folder of notes, like an Obsidian vault. Its notes and subfolders show in the files pane (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>), a click opens one as a tab, new notes are files in it from the start, edits are saved as you type, and what other programs do to the folder shows up a moment later (Settings can turn either off). Backlinks, the agenda, link previews and <code>[[</code> suggestions cover every note in the folder, open or not</td></tr>
+    <tr><td>Files pane</td><td>The + buttons make a note or a folder in the selected folder. <kbd>F2</kbd> or double-click renames, <kbd>Del</kbd> moves to a <code>.trash</code> folder inside the folder, and notes and folders can be dragged into other folders. Right-click for the same actions. Arrow keys move, <kbd>Enter</kbd> opens</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Open one or more files / print or save as PDF. Files can also be dropped onto the page</td></tr>
-    <tr><td>File › Workspace</td><td>Open a whole folder as tabs (subfolders included), or save the open files as a named workspace and reopen them together later, from one folder or several. Opening a workspace replaces the tabs that have nothing unsaved; tabs with changes stay. A folder dropped onto the page opens as a workspace too. In a folder workspace a new tab is a file in the folder at once, edits are saved as you type, and notes added, changed or removed in the folder by other programs appear in the tabs (Settings can turn either off)</td></tr>
-    <tr><td><kbd>Alt</kbd>+<kbd>N</kbd> / <kbd>Alt</kbd>+<kbd>W</kbd></td><td>New tab / close tab. <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> switches. Double-click a tab or the title to rename. A file is renamed on disk too; PowerNotes asks for access to its folder the first time</td></tr>
+    <tr><td>File › Workspace</td><td>Save the open folder and tabs as a named workspace and reopen them together later, or a set of files from anywhere. Opening a workspace replaces the tabs that have nothing unsaved; tabs with changes stay. A folder dropped onto the page opens as the folder too</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>N</kbd> / <kbd>Alt</kbd>+<kbd>W</kbd></td><td>New tab / close tab. <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> switches. Double-click a tab or the title to rename. A file is renamed on disk too; for a file outside the open folder PowerNotes asks for access to its folder the first time</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Next / previous tab, where the browser lets a page have that key. <kbd>Alt</kbd>+<kbd>PgDn</kbd> / <kbd>PgUp</kbd> always works</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Move the tab left / right (<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>PgUp</kbd> / <kbd>PgDn</kbd> too). Tabs can also be dragged into place</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td><td>Find / replace</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Filter by open or done, due date and tags. <em>Parents</em> keeps the headings and parent items of matches, <em>Children</em> keeps what is nested under them, <em>Dim</em> fades the rest instead of hiding it. View › Today is a preset for open items due today or earlier</td></tr>
-    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Outline sidebar</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Files pane / outline sidebar</td></tr>
     <tr><td><kbd>Ctrl</kbd>+<kbd>=</kbd> <kbd>−</kbd> <kbd>0</kbd> or <kbd>Ctrl</kbd>+wheel</td><td>Zoom in, out, reset</td></tr>
     <tr><td><kbd>F1</kbd> or <kbd>Ctrl</kbd>+<kbd>/</kbd></td><td>This help, also under File › Help</td></tr>
   </table>
@@ -435,9 +473,9 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
   <h2>Settings</h2>
   <label class="f">Theme <select id="setTheme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
   <label class="f">Font <select id="setFont"><option value="system">System sans-serif</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
-  <label class="f">Folder workspace follows the folder <select id="setSync"><option value="on">On</option><option value="off">Off</option></select></label>
-  <label class="f">Folder workspace saves as you type <select id="setAutosave"><option value="on">On</option><option value="off">Off</option></select></label>
-  <p class="hint">In a folder workspace a new tab is a file in the folder from the start, and notes added, changed or removed in the folder by other programs show up in the tabs a few seconds later. With saving as you type, edits reach the file about a second after you pause; otherwise Ctrl+S writes them.</p>
+  <label class="f">Follow changes to the folder on disk <select id="setSync"><option value="on">On</option><option value="off">Off</option></select></label>
+  <label class="f">Save notes in the folder as you type <select id="setAutosave"><option value="on">On</option><option value="off">Off</option></select></label>
+  <p class="hint">With following on, notes added, changed, renamed or removed in the folder by other programs show up in the files pane and the tabs a moment later. With saving as you type, edits reach the file about a second after you pause; otherwise Ctrl+S writes them.</p>
   <label class="f">Spellcheck <select id="setSpell"><option value="on">On</option><option value="off">Off</option></select></label>
   <label class="f">Spellcheck language <input type="text" id="setLang" placeholder="e.g. en-US, en-GB, fr" spellcheck="false"></label>
   <label class="f">Spelling test <textarea id="setSpellTest" rows="1" spellcheck="true" aria-label="Spelling test">Teh quikc brown fox</textarea></label>
@@ -458,13 +496,13 @@ dialog::backdrop{background:rgba(0,0,0,.3)}
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
-const editor=$('editor'), main=$('main'), src=$('src'), tabsEl=$('tabs'), fileInput=$('file'), dirInput=$('dirInput'), outlineEl=$('outline'), backEl=$('backlinks'), acEl=$('ac'), docTitle=$('docTitle');
+const editor=$('editor'), main=$('main'), src=$('src'), tabsEl=$('tabs'), fileInput=$('file'), outlineEl=$('outline'), backEl=$('backlinks'), acEl=$('ac'), docTitle=$('docTitle');
 const findBar=$('find'), findInput=$('findInput'), findCount=$('findCount'), replWrap=$('repl'), replInput=$('replInput'), findCaseBtn=$('findCase'), replToggle=$('replToggle');
 const helpDlg=$('help'), settingsDlg=$('settings'), accessDlg=$('access'), menubar=$('menubar'), appEl=document.querySelector('.app');
 const filterBar=$('filterBar'), fStatus=$('fStatus'), fDue=$('fDue'), fPri=$('fPri'), fTags=$('fTags'), fCount=$('fCount'), fParents=$('fParents'), fChildren=$('fChildren'), fDim=$('fDim');
 const datePop=$('datePop'), dpInput=$('dpInput'), headerEl=$('header'), crumbEl=$('crumb'), pvEl=$('preview'), palEl=$('pal'), palInput=$('palInput'), palList=$('palList'), agendaEl=$('agenda');
 const KEY='mdnotes.v2', OLDKEY='mdnotes.draft';
-const APP_VERSION='1.0.1'; $('ver').textContent='v'+APP_VERSION;
+const APP_VERSION='1.1.0'; $('ver').textContent='v'+APP_VERSION;
 const CHEV='<svg viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M3 1l5 4-5 4z"/></svg>';
 const WELCOME=`# Welcome
 Each line is a row. Hover a row and click the box beside it to check it off.
@@ -493,7 +531,7 @@ const HL=('highlights' in CSS)&&typeof Highlight==='function';
 let docs=[], cur=0, lines=[], fenced=[], hiddenArr=[], dimArr=[], indentUnit=2;
 let undo=[], redo=[];
 const FILTER_DEFAULTS={status:'all',due:'any',pri:'any',tags:[],parents:true,children:true,dim:false};
-const settings={zoom:1,hideDone:false,indentHeadings:true,outline:false,theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,filter:Object.assign({on:false},FILTER_DEFAULTS)};
+const settings={zoom:1,hideDone:false,indentHeadings:true,outline:false,files:true,fw:240,theme:'system',font:'system',spell:true,lang:'',sync:true,autosave:true,filter:Object.assign({on:false},FILTER_DEFAULTS)};
 let filterStats={match:0,total:0};
 let typing=false, typingTimer=0, draftTimer=0, srcTimer=0, mouseDown=false, composing=false, lastSel=null, sourceOn=false;
 const htmlCache=new Map();
@@ -787,14 +825,16 @@ function markOutline(){
 }
 outlineEl.addEventListener('click',e=>{ const a=e.target.closest('.oi'); if(!a) return; const i=+a.dataset.i; if(lines[i]) revealRow(i); });
 function wikiTargets(name){ const n=name.replace(/\.md$/i,'').toLowerCase(); return docs.filter(d=>d.name.replace(/\.md$/i,'').toLowerCase()===n); }
+/* notes linking here: open tabs by their live text, the rest of the folder by the index */
 function renderBacklinks(){
-  const me=D().name.replace(/\.md$/i,'').toLowerCase(); const from=[];
-  docs.forEach((d,k)=>{ if(k===cur) return; const re=/\[\[([^\]\n]+?)\]\]/g; for(const l of d.lines){ let m; while((m=re.exec(l.text))){ if(m[1].trim().replace(/\.md$/i,'').toLowerCase()===me){ from.push(k); break; } } if(from[from.length-1]===k) break; } });
+  const me=baseOf(D().name).toLowerCase(), from=[];
+  docs.forEach((d,k)=>{ if(k===cur) return; const re=/\[\[([^\]\n]+?)\]\]/g; for(const l of d.lines){ let m, hit=false; while((m=re.exec(l.text))) if(baseOf(m[1].trim()).toLowerCase()===me){ hit=true; break; } if(hit){ from.push({k,name:d.name}); break; } } });
+  for(const e of vx.notes.values()) if(!openDocAt(e.path)&&e.links.includes(me)) from.push({p:e.path,name:e.name});
   backEl.hidden=!from.length||sourceOn||agendaOn; if(backEl.hidden) return;
   backEl.replaceChildren(); backEl.append('Linked from: ');
-  from.forEach(k=>{ const a=el('a'); a.textContent=docs[k].name; a.dataset.k=k; backEl.append(a); });
+  from.forEach(x=>{ const a=el('a'); a.textContent=baseOf(x.name); if(x.k!=null) a.dataset.k=x.k; else { a.dataset.p=x.p; a.title=x.p; } backEl.append(a); });
 }
-backEl.addEventListener('click',e=>{ const a=e.target.closest('a'); if(a) switchTab(+a.dataset.k); });
+backEl.addEventListener('click',e=>{ const a=e.target.closest('a'); if(!a) return; if(a.dataset.k!=null) switchTab(+a.dataset.k); else { const n=vx.notes.get(a.dataset.p); if(n) openNote(n); } });
 
 /* ---------- selection ---------- */
 function contentOf(i){ const r=editor.children[i]; return r?r.querySelector('.content'):null; }
@@ -1459,17 +1499,22 @@ window.addEventListener('resize',()=>{ closeDatePop(false); acHide(); });
 /* ---------- autocomplete for #tags and [[notes]] ---------- */
 const ac={open:false,items:[],idx:0,kind:'',start:0,end:0,i:0};
 function collectTags(){
-  const m=new Map();
-  for(const d of docs) for(const l of d.lines){ RE_TAG.lastIndex=0; let x; while((x=RE_TAG.exec(l.text))){ const k=x[1].toLowerCase(), e=m.get(k); if(e) e.n++; else m.set(k,{k,label:x[1],n:1}); } }
+  const m=new Map(), bump=(k,label,n)=>{ const e=m.get(k); if(e) e.n+=n; else m.set(k,{k,label,n}); };
+  for(const d of docs) for(const l of d.lines){ RE_TAG.lastIndex=0; let x; while((x=RE_TAG.exec(l.text))) bump(x[1].toLowerCase(),x[1],1); }
+  for(const e of vx.notes.values()) if(!openDocAt(e.path)) for(const k in e.tags) bump(k,e.tags[k][0],e.tags[k][1]);
   return [...m.values()].sort((a,b)=>b.n-a.n||a.k.localeCompare(b.k));
 }
 function noteNames(){
   const seen=new Set(), out=[];
-  const add=n=>{ const b=n.replace(/\.(md|markdown|txt)$/i,''); const k=b.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(b); } };
-  docs.forEach(d=>add(d.name)); folderNames.forEach(add); return out;
+  const add=n=>{ const b=baseOf(n), k=b.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(b); } };
+  docs.forEach(d=>add(d.name)); for(const e of vx.notes.values()) add(e.name); return out;
 }
 const DAYS_FULL=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-function usedDates(){ const s=new Set(); for(const d of docs) for(const l of d.lines){ const re=/@(\d{4}-\d{2}-\d{2})(?![\w-])/g; let m; while((m=re.exec(l.text))) s.add(m[1]); } return [...s].sort(); }
+function usedDates(){
+  const s=new Set(); for(const d of docs) for(const l of d.lines){ const re=/@(\d{4}-\d{2}-\d{2})(?![\w-])/g; let m; while((m=re.exec(l.text))) s.add(m[1]); }
+  for(const e of vx.notes.values()) if(!openDocAt(e.path)) for(const iso of e.dates) s.add(iso);
+  return [...s].sort();
+}
 /* after @: the date the typed text already means, dates used in any tab, then the next two weeks; matched on the ISO form, the weekday and words like tomorrow, shown the way the chip will read */
 function dateSuggestions(q){
   const ql=q.toLowerCase(), out=[], seen=new Set(), today=todayStr();
@@ -1524,14 +1569,16 @@ acEl.addEventListener('click',e=>{ const d=e.target.closest('.ai'); if(d) acAcce
 document.addEventListener('mousedown',e=>{ if(ac.open&&!e.target.closest('#ac')) acHide(); },true);
 
 /* ---------- wiki links ---------- */
+/* an open tab of that name, else the note of that name anywhere in the folder, else a new note at the top of the folder */
 async function openWiki(name){
   const t=wikiTargets(name); if(t.length){ switchTab(docs.indexOf(t[0])); return; }
-  const base=name.replace(/\.md$/i,''), n=base+'.md', text='# '+base+'\n';
-  if(folder&&await folderPerm()){
-    const hit=folderNames.find(f=>f.replace(NOTE_EXT,'').toLowerCase()===base.toLowerCase());
-    if(hit){ openFromFolder(hit); return; }
-    try{ const h=await folder.getFileHandle(n,{create:true}); const w=await h.createWritable(); await w.write(text); await w.close(); newTab(n,text,h); idb.set('handles',D().id,h); addRecent(h,n); listFolder(); return; }
-    catch(e){ console.error(e); }
+  const base=baseOf(name), n=base+'.md', text='# '+base+'\n', e=noteNamed(base);
+  if(e){ openNote(e); return; }
+  if(ws.dir&&vx.perm&&vx.root&&!BAD_NAME.test(n)){
+    try{
+      const h=await ws.dir.getFileHandle(n,{create:true}), w=await h.createWritable(); await w.write(text); await w.close();
+      const f=await h.getFile(); addNote(vx.root,h,n,f,text); newTab(n,text,h); const d=D(); d.wsPath=n; d.mtime=f.lastModified; idb.set('handles',d.id,h); addRecent(h,n); filesMarkCur(); return;
+    }catch(x){ console.error(x); }
   }
   newTab(n,text);
 }
@@ -1539,22 +1586,22 @@ async function openWiki(name){
 /* ---------- hover preview of [[links]] ---------- */
 let pvTimer=0, pvLink=null;
 function showPreview(a){
-  const name=a.dataset.wiki, base=name.replace(/\.md$/i,''), t=wikiTargets(name)[0]; pvEl.replaceChildren();
-  const title=el('div','pt'); title.textContent=t?t.name.replace(/\.md$/i,''):base; pvEl.append(title);
-  if(!t){
-    const d=el('div','pvl'), inFolder=folderNames.some(f=>f.replace(NOTE_EXT,'').toLowerCase()===base.toLowerCase());
-    d.textContent=inFolder?'In the notes folder · Ctrl+click to open':'Not open yet · Ctrl+click to create it'; pvEl.append(d);
-  } else {
-    let n=0, total=0;
+  const name=a.dataset.wiki, base=baseOf(name), t=wikiTargets(name)[0], e=t?null:noteNamed(base); pvEl.replaceChildren();
+  const title=el('div','pt'); title.textContent=t?baseOf(t.name):(e?baseOf(e.name):base); pvEl.append(title);
+  let head=null, total=0;
+  if(t){
+    head=[];
     for(const l of t.lines){
       if(!l.text.trim()) continue; const p=parse(l.text);
-      if(total===0&&n===0&&p.type==='h'&&plainText(p.body).toLowerCase()===title.textContent.toLowerCase()) continue;   /* the note's own title */
-      total++; if(n>=8) continue;
-      const d=el('div','pvl'+(p.type==='h'?' h':'')); d.style.paddingLeft=(p.indent*.9)+'em';
-      d.textContent=(p.checked==null?(isList(p)?'• ':''):(p.checked?'☑ ':'☐ '))+plainText(p.body); pvEl.append(d); n++;
+      if(!total&&p.type==='h'&&plainText(p.body).toLowerCase()===title.textContent.toLowerCase()) continue;   /* the note's own title */
+      total++; if(head.length<8) head.push({h:p.type==='h',ind:p.indent,li:isList(p),chk:p.checked,txt:plainText(p.body)});
     }
+  } else if(e){ head=e.head; total=e.n; }
+  if(!head){ const d=el('div','pvl'); d.textContent='Not open yet · Ctrl+click to create it'; pvEl.append(d); }
+  else {
+    for(const x of head){ const d=el('div','pvl'+(x.h?' h':'')); d.style.paddingLeft=(x.ind*.9)+'em'; d.textContent=(x.chk==null?(x.li?'• ':''):(x.chk?'☑ ':'☐ '))+x.txt; pvEl.append(d); }
     if(!total){ const d=el('div','pvl'); d.textContent='Empty note'; pvEl.append(d); }
-    else if(total>n){ const d=el('div','pvl more'); d.textContent='… '+(total-n)+' more line'+(total-n===1?'':'s'); pvEl.append(d); }
+    else if(total>head.length){ const d=el('div','pvl more'); d.textContent='… '+(total-head.length)+' more line'+(total-head.length===1?'':'s'); pvEl.append(d); }
   }
   pvEl.hidden=false;
   const r=a.getBoundingClientRect(), w=pvEl.offsetWidth, h=pvEl.offsetHeight, below=r.bottom+h+12<innerHeight;
@@ -1593,6 +1640,7 @@ function palCommands(){
   const walk=(items,cat)=>{ let sect=''; for(const it of items){ if(it==='-'){ sect=''; continue; } if(it.h){ sect=it.h; continue; } if(it.dis) continue; if(it.sub){ walk(it.sub(),cat+' › '+it.l); continue; } out.push({cat:cat+(sect?' › '+sect:''),label:it.l,sc:it.sc||'',run:it.f}); } };
   for(const name of MENU_ORDER) walk(menus[name](),cap(name));
   docs.forEach((d,k)=>out.push({cat:'Tab',label:d.name,sc:k<9?'Alt+'+(k+1):'',run:()=>switchTab(k)}));
+  for(const e of vx.notes.values()) if(!openDocAt(e.path)) out.push({cat:'Note',label:labelOf(e.name),sc:parentOf(e.path).slice(0,-1),run:()=>openNote(e)});
   lines.forEach((l,i)=>{ const p=parseAt(i); if(p.type==='h') out.push({cat:'Heading',label:p.body||'(untitled)',sc:'',run:()=>revealRow(i)}); });
   return out;
 }
@@ -1636,28 +1684,31 @@ document.addEventListener('mousedown',e=>{ if(pal.open&&!e.target.closest('#pal'
 
 /* ---------- agenda: every open item with a date, from every tab, grouped by day ---------- */
 let agendaOn=false;
+/* open tabs by their live text, the rest of the folder by the index */
 function agendaItems(){
   const out=[];
   docs.forEach((d,k)=>{ let inF=false; d.lines.forEach((l,j)=>{
     if(RE_FENCE.test(l.text)){ inF=!inF; return; } if(inF) return;
-    const p=parse(l.text); if(p.checked!==false) return; const iso=dueOf(p.body); if(iso) out.push({iso,k,j,p,name:d.name});
+    const p=parse(l.text); if(p.checked!==false) return; const iso=dueOf(p.body); if(iso) out.push({iso,k,j,body:p.body,name:d.name});
   }); });
-  return out.sort((a,b)=>a.iso.localeCompare(b.iso)||a.k-b.k||a.j-b.j);
+  for(const e of vx.notes.values()) if(!openDocAt(e.path)) for(const it of e.items) out.push({iso:it.iso,p:e.path,j:it.j,body:it.body,name:e.name});
+  return out.sort((a,b)=>a.iso.localeCompare(b.iso)||(a.k==null)-(b.k==null)||(a.k!=null?a.k-b.k:a.p.localeCompare(b.p))||a.j-b.j);
 }
 function agendaDay(iso,today){ const lab=dueLabel(iso).slice(1); return iso<today?'Overdue · '+lab:lab; }
 function renderAgenda(){
   if(!agendaOn) return;
   const items=agendaItems(), today=todayStr(), frag=document.createDocumentFragment();
   const h=el('h2'); h.textContent='Agenda'; const sub=el('div','sub');
-  sub.textContent=items.length?items.length+' open item'+(items.length===1?'':'s')+' with a date across '+docs.length+' tab'+(docs.length===1?'':'s')+'. Check one off here, or click it to go to it. Esc closes.':'No open items with a date in any tab. Add @today or @fri to a line and it shows up here.';
+  const where=vx.root?'the folder "'+ws.dir.name+'" and the open tabs':docs.length+' tab'+(docs.length===1?'':'s');
+  sub.textContent=items.length?items.length+' open item'+(items.length===1?'':'s')+' with a date across '+where+'. Check one off here, or click it to go to it. Esc closes.':'No open items with a date in '+where+'. Add @today or @fri to a line and it shows up here.';
   frag.append(h,sub);
   let last=null;
   for(const it of items){
     if(it.iso!==last){ last=it.iso; const dh=el('div','day'+(it.iso<today?' over':it.iso===today?' today':'')); dh.textContent=agendaDay(it.iso,today); dh.title=it.iso; frag.append(dh); }
-    const r=el('div','ag'); r.dataset.k=it.k; r.dataset.j=it.j;
+    const r=el('div','ag'); if(it.k!=null) r.dataset.k=it.k; else r.dataset.p=it.p; r.dataset.j=it.j;
     const cb=el('input'); cb.type='checkbox'; cb.setAttribute('aria-label','Done');
-    const t=el('div','txt'); t.innerHTML=inline(it.p.body).html; t.title='Go to this line';
-    const src=el('span','src'); src.textContent=it.name.replace(/\.md$/i,'');
+    const t=el('div','txt'); t.innerHTML=inline(it.body).html; t.title='Go to this line';
+    const src=el('span','src'); src.textContent=baseOf(it.name); src.title=it.p||it.name;
     r.append(cb,t,src); frag.append(r);
   }
   agendaEl.replaceChildren(frag);
@@ -1669,15 +1720,18 @@ function setAgenda(on){
   if(on){ editor.hidden=true; docTitle.hidden=true; renderAgenda(); agendaEl.hidden=false; renderOutline(); renderBacklinks(); renderFilterBar(); crumbEl.hidden=true; }
   else { agendaEl.hidden=true; editor.hidden=false; docTitle.hidden=false; render(); if(lastSel) setSel(lastSel.a,lastSel.f); }
 }
-agendaEl.addEventListener('change',e=>{
-  if(e.target.type!=='checkbox') return; const r=e.target.closest('.ag'), k=+r.dataset.k, j=+r.dataset.j, d=docs[k]; if(!d||!d.lines[j]) return;
+agendaEl.addEventListener('change',async e=>{
+  if(e.target.type!=='checkbox') return; const r=e.target.closest('.ag'), j=+r.dataset.j;
+  if(r.dataset.k==null){ const n=vx.notes.get(r.dataset.p); if(n) await checkOffInFile(n,j); setTimeout(renderAgenda,200); return; }
+  const k=+r.dataset.k, d=docs[k]; if(!d||!d.lines[j]) return;
   if(k===cur) toggleCheck(j,true,false);
-  else { d.undo.push({lines:d.lines.map(x=>({text:x.text,collapsed:x.collapsed})),sel:d.sel}); const p=parse(d.lines[j].text); p.checked=true; d.lines[j].text=build(p); d.dirty=true; renderTabs(); scheduleDraft(); }
+  else { d.undo.push({lines:d.lines.map(x=>({text:x.text,collapsed:x.collapsed})),sel:d.sel}); const p=parse(d.lines[j].text); p.checked=true; d.lines[j].text=build(p); d.dirty=true; renderTabs(); scheduleDraft(); scheduleAutosave(); }
   setTimeout(renderAgenda,200);
 });
-agendaEl.addEventListener('click',e=>{
-  const t=e.target.closest('.txt'); if(!t) return; const r=t.closest('.ag'), k=+r.dataset.k, j=+r.dataset.j;
-  setAgenda(false); if(k!==cur) switchTab(k); if(lines[j]) revealRow(j);
+agendaEl.addEventListener('click',async e=>{
+  const t=e.target.closest('.txt'); if(!t) return; const r=t.closest('.ag'), j=+r.dataset.j;
+  if(r.dataset.k==null){ const n=vx.notes.get(r.dataset.p); if(!n) return; setAgenda(false); if(await openNote(n)&&lines[j]) revealRow(j); return; }
+  const k=+r.dataset.k; setAgenda(false); if(k!==cur) switchTab(k); if(lines[j]) revealRow(j);
 });
 
 /* ---------- tabs ---------- */
@@ -1718,6 +1772,7 @@ function renderTabs(){
   const add=el('button','btn tadd'); add.type='button'; add.textContent='+'; add.title='New (Alt+N)'; frag.append(add);
   tabsEl.replaceChildren(frag); document.title=(D().dirty?'• ':'')+D().name+(ws.name?' · '+ws.name:'')+' · PowerNotes';
   if(!docTitle.querySelector('input.trename')) docTitle.textContent=D().name.replace(NOTE_EXT,'');
+  filesMarkCur();
 }
 docTitle.addEventListener('dblclick',()=>startRename(cur));
 tabsEl.addEventListener('click',e=>{
@@ -1754,12 +1809,14 @@ async function renameDoc(d,name){
   if(name===old) return;
   const tabOnly=()=>{ d.name=name; d.handle=null; idb.del('handles',d.id); markDirty(); renderBacklinks(); renderTabs(); };
   if(!h){ tabOnly(); return; }
+  /* a note in the open folder is renamed through the folder, and its tree row follows */
+  if(d.wsPath&&vx.notes.has(d.wsPath)&&vx.perm){ await moveEntry(d.wsPath,parentOf(d.wsPath),name); return; }
   const r=await renameOnDisk(d,name);
   if(r==='tabonly') tabOnly();
 }
 async function renameOnDisk(d,name){
   const h=d.handle, old=d.name;
-  const finish=async nh=>{ d.handle=nh; d.name=nh.name||name; idb.set('handles',d.id,nh); renderBacklinks(); renderTabs(); scheduleDraft(); await addRecent(nh,d.name); await dropRecent(old,nh); listFolder(); return 'done'; };
+  const finish=async nh=>{ d.handle=nh; d.name=nh.name||name; idb.set('handles',d.id,nh); renderBacklinks(); renderTabs(); scheduleDraft(); await addRecent(nh,d.name); await dropRecent(old,nh); return 'done'; };
   /* 1. permission to change the file itself */
   if(!(await ensurePerm(h,'readwrite'))){
     const a=await askAccess({title:'Allow access to '+old,msg:'PowerNotes needs your permission to change "'+old+'" before it can rename it on disk.',ok:'Allow access',alt:'Rename tab only'});
@@ -1802,10 +1859,10 @@ async function rememberDir(dir){
   const dirs=await knownDirs(); for(const k of dirs) if(await k.isSameEntry(dir).catch(()=>false)) return;
   dirs.unshift(dir); await idb.set('handles','dirs',dirs.slice(0,12));
 }
-/* the notes folder first, then folders granted before; a folder that is not already permitted is asked about,
+/* the open folder first, then folders granted before; a folder that is not already permitted is asked about,
    which is fine here because this runs inside the click or keypress that started the rename */
 async function findParent(h){
-  const cands=folder?[folder]:[]; for(const k of await knownDirs()) if(!folder||!(await k.isSameEntry(folder).catch(()=>false))) cands.push(k);
+  const cands=ws.dir?[ws.dir]:[]; for(const k of await knownDirs()) if(!ws.dir||!(await k.isSameEntry(ws.dir).catch(()=>false))) cands.push(k);
   for(const dir of cands){ if(await ensurePerm(dir,'readwrite')){ const p=await descend(dir,h); if(p) return p; } }
   return null;
 }
@@ -1816,9 +1873,7 @@ async function pickParent(h){
   try{ dir=await showDirectoryPicker({mode:'readwrite',startIn:h}); }
   catch(e){ if(e.name==='AbortError') return null; try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e2){ return null; } }
   rememberDir(dir);
-  const parent=await descend(dir,h);
-  if(parent&&!folder){ folder=dir; folderListed=false; idb.set('handles','folder',dir); listFolder(); }
-  return {dir,parent};
+  return {dir,parent:await descend(dir,h)};
 }
 /* a small modal with a primary action, an optional alternative and Cancel; resolves 'ok', 'alt' or 'cancel'.
    The button click is what gives the following permission request or picker its user gesture */
@@ -1843,7 +1898,8 @@ async function dropRecent(name,keep){
 function saveDocState(){ const d=D(); if(!d) return; d.sel=lastSel; d.scroll=window.scrollY; d.undo=undo; d.redo=redo; d.indentUnit=indentUnit; }
 function loadDocState(){ acHide(); const d=D(); lines=d.lines; undo=d.undo; redo=d.redo; indentUnit=d.indentUnit; lastSel=d.sel; render(); renderTabs(); window.scrollTo(0,d.scroll||0); if(find.open) runFind(false); }
 function switchTab(k){ if(k===cur||!docs[k]) return; if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); cur=k; loadDocState(); if(lastSel) setSel(lastSel.a,lastSel.f); scheduleDraft(); }
-function newTab(name,text,handle){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); const d=newDoc(name,text); d.handle=handle||null; d.indentUnit=detectIndent(d.lines); docs.push(d); cur=docs.length-1; loadDocState(); setSel({i:0,off:0}); scheduleDraft(); if(!handle) createInFolder(d); }
+/* a new tab; without a handle it becomes a file in the open folder (in node, a subfolder, when given), and resolves to that path */
+function newTab(name,text,handle,node){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); const d=newDoc(name,text); d.handle=handle||null; d.indentUnit=detectIndent(d.lines); docs.push(d); cur=docs.length-1; loadDocState(); setSel({i:0,off:0}); scheduleDraft(); return handle?Promise.resolve(null):createInFolder(d,node); }
 function closeTab(k){
   const d=docs[k]; if(!d) return;
   if(d.dirty&&!confirm('Close "'+d.name+'" and discard unsaved changes?')) return;
@@ -1857,11 +1913,13 @@ function closeTab(k){
 }
 function isBlank(d){ return !d.dirty&&!d.handle&&d.lines.length===1&&d.lines[0].text===''; }
 async function sameFile(a,b){ return a===b||(a.name===b.name&&await a.isSameEntry(b).catch(()=>false)); }
+/* opens text as a tab (the current tab, when it is blank) and resolves to that tab; a file already open is switched to instead */
 async function openInto(text,name,handle){
-  if(handle){ for(let k=0;k<docs.length;k++){ const h=docs[k].handle; if(h&&await sameFile(h,handle)){ switchTab(k); return; } } }
-  if(isBlank(D())){ const d=D(); d.lines=fromTextRaw(text); d.name=name; d.handle=handle||null; d.undo=[]; d.redo=[]; d.sel=null; d.indentUnit=detectIndent(d.lines); loadDocState(); setSel({i:0,off:0}); scheduleDraft(); }
+  if(handle){ for(let k=0;k<docs.length;k++){ const h=docs[k].handle; if(h&&await sameFile(h,handle)){ switchTab(k); return docs[k]; } } }
+  if(isBlank(D())){ const d=D(); d.lines=fromTextRaw(text); d.name=name; d.handle=handle||null; d.wsPath=undefined; d.mtime=undefined; d.undo=[]; d.redo=[]; d.sel=null; d.indentUnit=detectIndent(d.lines); loadDocState(); setSel({i:0,off:0}); scheduleDraft(); }
   else newTab(name,text,handle);
-  if(handle){ idb.set('handles',D().id,handle); addRecent(handle,name); }
+  if(handle){ idb.set('handles',D().id,handle); addRecent(handle,name); if(ws.dir&&vx.perm) requestScan(false,null,0); }
+  return D();
 }
 
 /* ---------- source view ---------- */
@@ -1879,7 +1937,7 @@ src.addEventListener('keydown',e=>{ if(e.key==='Tab'){ e.preventDefault(); const
 /* ---------- IndexedDB: file handles, recent files and workspaces ---------- */
 const idb={
   dbp:null,
-  open(){ if(this.dbp) return this.dbp; this.dbp=new Promise((res,rej)=>{ if(!window.indexedDB) return rej(new Error('no idb')); const r=indexedDB.open('mdnotes',2); r.onupgradeneeded=()=>{ const d=r.result; for(const n of ['handles','recent','workspaces']) if(!d.objectStoreNames.contains(n)) d.createObjectStore(n); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return this.dbp; },
+  open(){ if(this.dbp) return this.dbp; this.dbp=new Promise((res,rej)=>{ if(!window.indexedDB) return rej(new Error('no idb')); const r=indexedDB.open('mdnotes',3); r.onupgradeneeded=()=>{ const d=r.result; for(const n of ['handles','recent','workspaces','index']) if(!d.objectStoreNames.contains(n)) d.createObjectStore(n); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return this.dbp; },
   async op(store,mode,fn){ try{ const db=await this.open(); return await new Promise((res,rej)=>{ const tx=db.transaction(store,mode); const rq=fn(tx.objectStore(store)); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); }); }catch(e){ return undefined; } },
   get(s,k){ return this.op(s,'readonly',o=>o.get(k)); }, set(s,k,v){ return this.op(s,'readwrite',o=>o.put(v,k)); }, del(s,k){ return this.op(s,'readwrite',o=>o.delete(k)); },
   all(s){ return this.op(s,'readonly',o=>o.getAll()); }, keys(s){ return this.op(s,'readonly',o=>o.getAllKeys()); }
@@ -1901,74 +1959,500 @@ async function openRecent(r){
   catch(e){ alert('Could not open '+r.name+'. It may have been moved or deleted.'); idb.del('recent',r.key); loadRecent(); }
 }
 
-/* ---------- notes folder ---------- */
-let folder=null, folderNames=[], folderListed=false;
-const NOTE_EXT=/\.(md|markdown|txt)$/i;
-async function pickFolder(){
-  if(!window.showDirectoryPicker){ alert('This browser cannot open folders. Chrome or Edge can.'); return; }
-  try{ folder=await showDirectoryPicker({mode:'readwrite'}); folderListed=false; idb.set('handles','folder',folder); await listFolder(); }
-  catch(e){ if(e.name!=='AbortError') console.error(e); }
+/* ---------- the folder ----------
+   One folder is open at a time, like an Obsidian vault: ws.dir is its handle, the files pane shows it as a tree, a
+   new note is a file in it from the start, edits are written as you type, and what other programs do to it shows
+   up here. Every note in it has an index entry (links, dated items, tags, first lines, mtime) so backlinks, the
+   agenda, link previews and autocomplete cover the whole folder and not only the open tabs. Entries are cached in
+   IndexedDB and reused while a file's size and mtime are unchanged, so reopening a big folder does not re-read it. */
+const NOTE_EXT=/\.(md|markdown|txt)$/i, SKIP_DIR=/^(\.|node_modules$|\$RECYCLE)/i, VX_MAX=20000, VX_DEPTH=16;
+let ws={key:null,name:'',dir:null}, workspaces=[];
+const vx={root:null,dirs:new Map(),notes:new Map(),perm:false,scanning:false,busy:0,sig:''};
+const filesEl=$('files'), treeEl=$('fTree'), fNameEl=$('fName'), rows=new Map();
+let exp=new Set(), fsel=null;
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const byName=(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});
+const baseOf=n=>n.replace(NOTE_EXT,'');
+const labelOf=n=>/\.md$/i.test(n)?n.slice(0,-3):n;
+const isDirPath=p=>p===''||p.endsWith('/');
+/* paths: 'a/b.md' for a file, 'a/b/' for a folder, '' for the folder itself */
+const parentOf=p=>{ const s=p.endsWith('/')?p.slice(0,-1):p; return s.slice(0,s.lastIndexOf('/')+1); };
+const nodeAt=p=>isDirPath(p)?vx.dirs.get(p):vx.notes.get(p);
+const openDocAt=p=>docs.find(d=>d.wsPath===p);
+/* the note called n (extension optional), anywhere in the folder */
+function noteNamed(n){ const k=baseOf(n).toLowerCase(); for(const e of vx.notes.values()) if(baseOf(e.name).toLowerCase()===k) return e; return null; }
+async function handleAt(p){ let h=ws.dir; const segs=p.split('/').filter(Boolean), dir=p.endsWith('/'); for(let i=0;i<segs.length;i++) h=(i===segs.length-1&&!dir)?await h.getFileHandle(segs[i]):await h.getDirectoryHandle(segs[i]); return h; }
+async function pathIn(dir,h){ try{ const p=await dir.resolve(h); return p?p.join('/'):null; }catch(e){ return null; } }
+
+/* the folder as a tree of {path,name,handle,dirs,files}; notes only, hidden folders left out */
+async function walkTree(dir){
+  const root={path:'',name:dir.name,handle:dir,dirs:[],files:[]}; let count=0;
+  const walk=async(node,depth)=>{
+    try{ for await(const h of node.handle.values()){
+      if(h.kind==='file'){ if(NOTE_EXT.test(h.name)&&count<VX_MAX){ count++; node.files.push({path:node.path+h.name,name:h.name,handle:h}); } }
+      else if(h.kind==='directory'&&!SKIP_DIR.test(h.name)&&depth<VX_DEPTH) node.dirs.push({path:node.path+h.name+'/',name:h.name,handle:h,dirs:[],files:[]});
+    } }catch(e){}
+    node.files.sort(byName); node.dirs.sort(byName);
+    for(const d of node.dirs) await walk(d,depth+1);
+  };
+  await walk(root,0); return root;
 }
-async function listFolder(){
-  folderNames=[]; if(!folder) return;
-  try{ for await(const [name,h] of folder.entries()) if(h.kind==='file'&&NOTE_EXT.test(name)) folderNames.push(name); folderListed=true; }catch(e){}
-  folderNames.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+/* what the rest of the app wants to know about a note without opening it */
+function indexText(text,name){
+  const links=new Set(), dates=new Set(), items=[], tags={}, head=[], title=baseOf(name).toLowerCase(); let inF=false, n=0;
+  text.split('\n').forEach((t,j)=>{
+    if(RE_FENCE.test(t)){ inF=!inF; return; } if(inF) return;
+    let m; const rl=/\[\[([^\]\n]+?)\]\]/g; while((m=rl.exec(t))) links.add(baseOf(m[1].trim()).toLowerCase());
+    RE_TAG.lastIndex=0; while((m=RE_TAG.exec(t))){ const k=m[1].toLowerCase(); if(tags[k]) tags[k][1]++; else tags[k]=[m[1],1]; }
+    const rd=/@(\d{4}-\d{2}-\d{2})(?![\w-])/g; while((m=rd.exec(t))) dates.add(m[1]);
+    if(!t.trim()) return;
+    const p=parse(t);
+    if(p.checked===false){ const iso=dueOf(p.body); if(iso) items.push({iso,j,body:p.body}); }
+    if(!n&&p.type==='h'&&plainText(p.body).toLowerCase()===title) return;   /* the note's own title line */
+    n++; if(head.length<8) head.push({h:p.type==='h',ind:p.indent,li:isList(p),chk:p.checked,txt:plainText(p.body)});
+  });
+  return {links:[...links],dates:[...dates],items,tags,head,n};
 }
-function closeFolder(){ folder=null; folderNames=[]; folderListed=false; idb.del('handles','folder'); }
-async function folderPerm(){ if(!folder) return false; const ok=await ensurePerm(folder,'readwrite'); if(ok&&!folderListed) await listFolder(); return ok; }
-async function openFromFolder(name){
-  if(!(await folderPerm())) return;
-  try{ const h=await folder.getFileHandle(name); const f=await h.getFile(); openInto(await f.text(),f.name,h); }
-  catch(e){ alert('Could not open '+name+'.'); listFolder(); }
+const ownWrites=new Map();
+function setEntry(e,text,file){ Object.assign(e,indexText(text,e.name),{mtime:file.lastModified,size:file.size}); ownWrites.set(e.path,Date.now()); scheduleCache(); }
+
+/* scans: a walk of the folder, then a stat of every file (full) or only of the new ones and those named (partial).
+   Files whose size or mtime changed are re-read and re-indexed. Requests are merged and run one at a time. */
+const pend={full:false,paths:new Set(),any:false}; let scanTimer=0, cacheTimer=0, lastFull=0;
+function requestScan(full,paths,ms){
+  if(!ws.dir||!vx.perm) return;
+  pend.any=true; if(full) pend.full=true; if(paths) for(const p of paths) pend.paths.add(p);
+  clearTimeout(scanTimer); scanTimer=setTimeout(runScan,ms==null?250:ms);
 }
-/* saves the current tab into the folder; true when written, null when the user cancelled, false when there is no folder to use */
-async function saveToFolder(d,text){
-  if(!folder||!(await folderPerm())) return false;
-  let name=d.name;
-  if(!name||/^Untitled(\s*\d*)?\.md$/i.test(name)){ const v=prompt('Save in '+folder.name+' as',name); if(v===null) return null; name=v.trim(); if(!name) return null; if(!NOTE_EXT.test(name)) name+='.md'; }
-  const h=await folder.getFileHandle(name,{create:true}); const w=await h.createWritable(); await w.write(text); await w.close();
-  d.handle=h; d.name=name; idb.set('handles',d.id,h); addRecent(h,name); listFolder(); return true;
+async function runScan(){
+  scanTimer=0; if(vx.scanning||!pend.any) return;
+  if(vx.busy){ scanTimer=setTimeout(runScan,400); return; }
+  vx.scanning=true;
+  try{ while(pend.any&&ws.dir&&vx.perm&&!vx.busy){ const full=pend.full, paths=pend.paths; pend.full=false; pend.paths=new Set(); pend.any=false; if(!(await scanOnce(full,paths))){ pend.any=true; pend.full=pend.full||full; break; } } }
+  catch(e){ console.warn('folder scan',e); }
+  finally{ vx.scanning=false; if(pend.any&&ws.dir) requestScan(false,null,500); }
 }
-function folderMenu(){
-  if(!folder) return [{l:'Open folder…',f:pickFolder}];
-  const items=[{h:'Folder: '+folder.name}];
-  if(!folderListed) items.push({l:'Show its files',f:async()=>{ if(await folderPerm()) showMenu('file',menubar.querySelector('[data-menu="file"]')); }});
-  else if(!folderNames.length) items.push({l:'No notes in this folder yet',dis:true});
-  else { items.push(...folderNames.slice(0,12).map(n=>({l:n,f:()=>openFromFolder(n)}))); if(folderNames.length>12) items.push({l:'…and '+(folderNames.length-12)+' more, use Open…',dis:true}); }
-  items.push({l:'Change folder…',f:pickFolder},{l:'Close folder',f:closeFolder});
-  return items;
+async function scanOnce(full,paths){
+  const dir=ws.dir, root=await walkTree(dir); if(ws.dir!==dir||vx.busy) return false;
+  const files=[], dirs=new Map();
+  (function collect(n){ dirs.set(n.path,n); files.push(...n.files); n.dirs.forEach(collect); })(root);
+  const seen=new Set(), changed=[]; let k=0;
+  for(const f of files){
+    seen.add(f.path); let e=vx.notes.get(f.path);
+    if(e&&e.handle&&!full&&!paths.has(f.path)){ e.handle=f.handle; continue; }
+    if(++k%25===0){ await tick(); if(ws.dir!==dir||vx.busy) return false; }
+    let file=null; try{ file=await f.handle.getFile(); }catch(x){ seen.delete(f.path); continue; }
+    if(e&&e.mtime===file.lastModified&&e.size===file.size){ e.handle=f.handle; continue; }
+    let text=''; try{ text=await file.text(); }catch(x){ seen.delete(f.path); continue; }
+    e=Object.assign({path:f.path,name:f.name,handle:f.handle,mtime:file.lastModified,size:file.size},indexText(text,f.name));
+    vx.notes.set(f.path,e); changed.push({e,text});
+  }
+  let gone=0; for(const p of [...vx.notes.keys()]) if(!seen.has(p)){ vx.notes.delete(p); gone++; }
+  (function link(n){ n.files=n.files.map(f=>vx.notes.get(f.path)).filter(Boolean); n.dirs.forEach(link); })(root);
+  vx.root=root; vx.dirs=dirs; if(full) lastFull=Date.now();
+  const sig=[...dirs.keys()].join('\n')+'\n|'+files.map(f=>f.path).join('\n');   /* the tree is redrawn only when its shape changed */
+  /* the tabs: paths for files opened before the tree existed, tabs whose file went away, tabs whose file changed on disk */
+  for(const d of docs) if(d.handle&&d.wsPath===undefined) d.wsPath=await pathIn(dir,d.handle);
+  for(const d of docs.slice()) if(d.wsPath&&!vx.notes.has(d.wsPath)&&!d.dirty) removeDoc(d);
+  for(const c of changed){ const d=openDocAt(c.e.path); if(!d) continue; if(d.mtime==null){ d.mtime=c.e.mtime; continue; } if(c.e.mtime!==d.mtime&&!d.dirty){ d.mtime=c.e.mtime; reloadDoc(d,c.text); } }
+  if(sig!==vx.sig){ vx.sig=sig; renderTree(); }
+  if(changed.length||gone){ renderBacklinks(); if(agendaOn) renderAgenda(); scheduleCache(); }
+  return true;
+}
+function scheduleCache(){ clearTimeout(cacheTimer); cacheTimer=setTimeout(saveCache,3000); }
+function saveCache(){
+  cacheTimer=0; if(!ws.dir) return; const notes={};
+  for(const [p,e] of vx.notes) notes[p]={mtime:e.mtime,size:e.size,links:e.links,dates:e.dates,items:e.items,tags:e.tags,head:e.head,n:e.n};
+  idb.set('index','vault',{name:ws.dir.name,notes});
+}
+async function loadCache(){
+  const c=await idb.get('index','vault'); if(!c||!c.notes||!ws.dir||c.name!==ws.dir.name) return;
+  for(const p in c.notes){ if(vx.notes.has(p)) continue; const e=c.notes[p]; if(e&&typeof e.mtime==='number') vx.notes.set(p,Object.assign({path:p,name:p.slice(p.lastIndexOf('/')+1),handle:null},e)); }
 }
 
-/* ---------- workspaces: a whole folder, or a chosen set of files from anywhere, opened together as tabs ----------
-   A workspace is remembered in IndexedDB as its folder handle (when it was opened from a folder) plus the file handles of
-   the tabs that came from elsewhere. Reopening a folder workspace re-reads the folder, so notes added since come along. */
-let ws={key:null,name:'',dir:null}, workspaces=[];
-const WS_MAX=200, SKIP_DIR=/^(\.|node_modules$|\$RECYCLE)/i;
+/* opening and closing the folder. The picker is shown when no handle is given; tabs with nothing unsaved close */
+async function openVault(dir){
+  if(!dir){
+    if(!window.showDirectoryPicker){ alert('This browser cannot open folders. Chrome or Edge can.'); return; }
+    try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e){ if(e.name!=='AbortError') console.error(e); return; }
+  } else if(!(await grantHandle(dir,'readwrite','the folder "'+dir.name+'"'))) return;
+  if(ws.dir&&await ws.dir.isSameEntry(dir).catch(()=>false)){ settings.files=true; await grantVault(); return; }
+  closeCleanTabs(); setWs(null,dir.name,dir);
+}
+function setWs(key,name,dir){
+  syncStop(); ws={key,name,dir:dir||null}; for(const d of docs) d.wsPath=undefined;
+  vx.root=null; vx.dirs=new Map(); vx.notes=new Map(); vx.perm=false; vx.sig=''; exp=new Set(); fsel=null;
+  if(dir){ idb.set('handles','folder',dir); rememberDir(dir); settings.files=true; grantVault(); }
+  else idb.del('handles','folder');
+  renderTree(); renderTabs(); scheduleDraft();
+}
+/* with permission in hand: the cached index, the tree, a first full scan, and the watch on the folder */
+async function grantVault(){
+  if(!ws.dir) return false;
+  if(!(await ensurePerm(ws.dir,'readwrite'))){ vx.perm=false; renderTree(); return false; }
+  vx.perm=true; await loadCache(); renderTree(); requestScan(true,null,0); syncStart(); return true;
+}
+async function restoreVault(){
+  const h=await idb.get('handles','folder'); if(!h) return;
+  ws.dir=h; if(!ws.name) ws.name=h.name;
+  let ok=false; try{ ok=(await h.queryPermission({mode:'readwrite'}))==='granted'; }catch(e){}
+  if(ok) await grantVault(); else renderTree();
+}
+function closeVault(){ closeCleanTabs(); setWs(null,'',null); }
+
+/* ---------- following the folder ----------
+   Where the browser has FileSystemObserver, changes arrive as records and only the files named are re-read; a
+   full scan then runs every few minutes as a check. Elsewhere the folder is scanned every 45 seconds while the
+   page is visible. Either way a scan runs when the window gets focus after a while away. */
+let syncTimer=0, observer=null, autoTimer=0, autoBusy=false;
+const OBS=typeof FileSystemObserver==='function';
+function syncStart(){
+  syncStop(); if(!ws.dir||!settings.sync||!vx.perm) return;
+  if(OBS){ try{ observer=new FileSystemObserver(onRecords); observer.observe(ws.dir,{recursive:true}).catch(()=>{ observer=null; syncSoon(45000); }); }catch(e){ observer=null; } }
+  syncSoon(observer?300000:45000);
+}
+function syncStop(){ clearTimeout(syncTimer); syncTimer=0; if(observer){ try{ observer.disconnect(); }catch(e){} observer=null; } }
+function syncSoon(ms){ if(!ws.dir||!settings.sync) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncPoll,ms); }
+function syncPoll(){ syncTimer=0; if(!ws.dir||!settings.sync) return; if(!document.hidden) requestScan(true); syncSoon(observer?300000:45000); }
+/* records for the app's own writes (and the browser's swap files) are dropped, so typing does not set off scans;
+   anything touching a folder, or that cannot be placed, brings a full scan */
+function onRecords(recs){
+  let full=false; const paths=new Set(), now=Date.now();
+  for(const r of recs){
+    const p=(r.relativePathComponents||[]).join('/'), kind=r.changedHandle?r.changedHandle.kind:null;
+    if(r.type==='unknown'||r.type==='errored'||kind==='directory'){ full=true; continue; }
+    if(/\.crswap$/i.test(p)) continue;
+    if(!NOTE_EXT.test(p)){ if(kind!=='file') full=true; continue; }
+    if(ownWrites.has(p)&&now-ownWrites.get(p)<5000&&r.type!=='disappeared') continue;
+    if(r.type==='moved') full=true; else paths.add(p);
+  }
+  if(full) requestScan(true); else if(paths.size) requestScan(false,paths);
+}
+function syncWake(){ if(ws.dir&&settings.sync&&Date.now()-lastFull>15000) requestScan(true,null,200); }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncWake(); });
+window.addEventListener('focus',syncWake);
+
+/* ---------- tabs and the folder ---------- */
+function removeDoc(d){
+  const k=docs.indexOf(d); if(k<0) return;
+  if(k===cur){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); }
+  idb.del('handles',d.id); docs.splice(k,1); if(!docs.length) docs.push(newDoc());
+  if(k<cur) cur--; else if(k===cur){ cur=Math.min(k,docs.length-1); loadDocState(); }
+  renderTabs(); renderBacklinks(); scheduleDraft();
+}
+function reloadDoc(d,text){
+  if(d===D()){
+    setLines(fromText(text,true)); indentUnit=detectIndent(lines);
+    if(sourceOn) src.value=serialize(); else { render(); if(lastSel) lastSel=mkSel(clampPos(lastSel.a),clampPos(lastSel.f)); restoreSel(); }
+  } else { d.lines=fromTextRaw(text); d.indentUnit=detectIndent(d.lines); d.sel=null; }
+  renderBacklinks(); scheduleDraft();
+}
+/* opens a note from the folder in a tab, or switches to the tab that has it */
+async function openNote(e){
+  const k=docs.findIndex(d=>d.wsPath===e.path); if(k>=0){ switchTab(k); return docs[k]; }
+  if(!e.handle) return null;
+  let f=null, text=''; try{ f=await e.handle.getFile(); text=await f.text(); }catch(x){ alert('Could not open '+e.name+'.'); requestScan(true,null,0); return null; }
+  const d=await openInto(text,e.name,e.handle); if(d){ d.wsPath=e.path; d.mtime=f.lastModified; } filesMarkCur(); return d;
+}
+/* writes a tab to its file and brings the index entry along; true when the tab is clean afterwards */
+async function writeDoc(d){
+  if(d===D()&&sourceOn) syncFromSource();
+  const text=serializeLines(d.lines), w=await d.handle.createWritable(); await w.write(text); await w.close();
+  const f=await d.handle.getFile(); d.mtime=f.lastModified;
+  const e=d.wsPath?vx.notes.get(d.wsPath):null; if(e) setEntry(e,text,f);
+  if(serializeLines(d.lines)===text){ d.dirty=false; return true; } return false;
+}
+async function freeName(dir,name){
+  const taken=new Set(); try{ for await(const n of dir.keys()) taken.add(n.toLowerCase()); }catch(e){}
+  if(!taken.has(name.toLowerCase())) return name;
+  const m=NOTE_EXT.exec(name), ext=m?m[0]:'', base=name.slice(0,name.length-ext.length); let k=1, v;
+  do{ v=base+' '+(++k)+ext; }while(taken.has(v.toLowerCase())); return v;
+}
+function addNote(node,handle,name,file,text){
+  const path=node.path+name, e=Object.assign({path,name,handle,mtime:file.lastModified,size:file.size},indexText(text,name));
+  vx.notes.set(path,e); node.files=node.files.filter(f=>f.path!==path); node.files.push(e); node.files.sort(byName);
+  ownWrites.set(path,Date.now()); exp.add(node.path); vx.sig=''; renderTree(); scheduleCache(); return e;
+}
+/* a new tab becomes Untitled.md (or Untitled 2.md, …, or its own name if it was renamed first) in the folder, or in
+   the subfolder given. Resolves to the new path, or null when there is no folder to create it in */
+async function createInFolder(d,node){
+  if(!ws.dir||!vx.perm||!vx.root||d.handle) return null;
+  node=node||vx.root;
+  try{
+    const name=await freeName(node.handle,(baseOf(d.name||'Untitled.md')||'Untitled')+(NOTE_EXT.exec(d.name||'')||['.md'])[0]);
+    if(d.handle||!docs.includes(d)) return null;
+    const text=serializeLines(d.lines), h=await node.handle.getFileHandle(name,{create:true}), w=await h.createWritable(); await w.write(text); await w.close();
+    const f=await h.getFile(), path=node.path+name;
+    d.handle=h; d.name=name; d.wsPath=path; d.mtime=f.lastModified; d.created=true;
+    if(serializeLines(d.lines)===text) d.dirty=false; else scheduleAutosave();
+    idb.set('handles',d.id,h); addNote(node,h,name,f,text); renderTabs(); renderBacklinks(); scheduleDraft(); return path;
+  }catch(e){ console.warn('create note',e); return null; }
+}
+/* a tab that is not a file yet is saved into the folder, asking for a name when it is still Untitled */
+async function saveToVault(d,text){
+  if(!ws.dir||!vx.perm||!vx.root) return false;
+  let name=d.name;
+  if(!name||/^Untitled(\s*\d*)?\.md$/i.test(name)){ const v=prompt('Save in '+ws.dir.name+' as',name); if(v===null) return null; name=v.trim(); if(!name) return null; if(!NOTE_EXT.test(name)) name+='.md'; }
+  if(BAD_NAME.test(name)){ alert('A file name cannot contain any of  \\ / : * ? " < > |'); return null; }
+  const h=await ws.dir.getFileHandle(name,{create:true}), w=await h.createWritable(); await w.write(text); await w.close();
+  const f=await h.getFile(); d.handle=h; d.name=name; d.wsPath=name; d.mtime=f.lastModified; idb.set('handles',d.id,h); addRecent(h,name);
+  addNote(vx.root,h,name,f,text); return true;
+}
+/* an auto-created note that is still empty and still called Untitled is removed from the folder when its tab closes */
+async function discardEmpty(d){
+  if(!d.created||!d.handle||!ws.dir||!d.wsPath||!/^Untitled( \d+)?\.(md|markdown|txt)$/i.test(d.name)||serializeLines(d.lines).trim()) return;
+  const dir=vx.dirs.get(parentOf(d.wsPath)); if(!dir) return;
+  try{ if(!(await (await d.handle.getFile()).text()).trim()){ await dir.handle.removeEntry(d.name); vx.notes.delete(d.wsPath); requestScan(false,null,0); } }catch(e){}
+}
+/* edits to files in the folder are written about a second after the last keystroke */
+function scheduleAutosave(){ if(!settings.autosave||!ws.dir) return; clearTimeout(autoTimer); autoTimer=setTimeout(autosave,1000); }
+async function autosave(){
+  autoTimer=0; if(!settings.autosave||!ws.dir) return;
+  if(autoBusy||composing||vx.busy){ scheduleAutosave(); return; }
+  autoBusy=true; let changed=false;
+  try{
+    for(const d of docs){
+      if(!d.dirty||!d.handle) continue;
+      if(d.wsPath===undefined) d.wsPath=await pathIn(ws.dir,d.handle);
+      if(!d.wsPath) continue;
+      try{ if((await d.handle.queryPermission({mode:'readwrite'}))!=='granted') continue; if(await writeDoc(d)) changed=true; else scheduleAutosave(); }
+      catch(e){ console.warn('autosave',e); }
+    }
+  } finally{ autoBusy=false; }
+  if(changed){ renderTabs(); renderBacklinks(); scheduleDraft(); }
+}
+/* an open item in a note that is not open: checked off in the file itself */
+async function checkOffInFile(e,j){
+  if(!e.handle) return;
+  try{
+    const ls=(await (await e.handle.getFile()).text()).split('\n'); if(ls[j]==null) return;
+    const p=parse(ls[j]); if(p.checked!==false) return; p.checked=true; ls[j]=build(p);
+    const text=ls.join('\n'), w=await e.handle.createWritable(); await w.write(text); await w.close();
+    setEntry(e,text,await e.handle.getFile());
+  }catch(x){ console.warn('agenda',x); }
+}
+
+/* ---------- moving, renaming and deleting in the folder ----------
+   The browser can move a file in place only in some cases; otherwise it is copied and the original removed. Folders
+   are always copied. Open tabs inside follow along, and so do their index entries. Deleting moves into a .trash
+   folder at the top of the folder, so a mistake can be undone in Explorer. */
+async function copyDir(src,parent,name){
+  const nd=await parent.getDirectoryHandle(name,{create:true});
+  for await(const h of src.values()){
+    if(h.kind==='file'){ const f=await h.getFile(), nh=await nd.getFileHandle(h.name,{create:true}), w=await nh.createWritable(); await w.write(f); await w.close(); }
+    else await copyDir(h,nd,h.name);
+  }
+  return nd;
+}
+async function relocateFile(h,fromDir,dir,name){
+  if(typeof h.move==='function'){ try{ if(fromDir===dir) await h.move(name); else await h.move(dir,name); return await dir.getFileHandle(name); }catch(e){ if(e.name==='AbortError') throw e; } }
+  const f=await h.getFile(), nh=await dir.getFileHandle(name,{create:true}), w=await nh.createWritable(); await w.write(f); await w.close();
+  await fromDir.removeEntry(h.name); return nh;
+}
+async function relocateDir(h,fromDir,dir,name){ const nd=await copyDir(h,dir,name); await fromDir.removeEntry(h.name,{recursive:true}); return nd; }
+const insideOf=(path,isDir)=>docs.filter(d=>d.wsPath&&(isDir?d.wsPath.startsWith(path):d.wsPath===path));
+/* moves the file or folder at path into the folder at destPath, under newName when given. Resolves to the new path, or null */
+async function moveEntry(path,destPath,newName){
+  const isDir=path.endsWith('/'), src=nodeAt(path), dest=vx.dirs.get(destPath), from=vx.dirs.get(parentOf(path));
+  if(!path||!src||!dest||!from||!vx.perm) return null;
+  let name=(newName||src.name).trim(); if(!name) return null;
+  if(!isDir&&!NOTE_EXT.test(name)) name+=(NOTE_EXT.exec(src.name)||['.md'])[0];
+  if(BAD_NAME.test(name)){ alert('A name cannot contain any of  \\ / : * ? " < > |'); return null; }
+  const newPath=destPath+name+(isDir?'/':'');
+  if(newPath===path) return null;
+  if(isDir&&newPath.startsWith(path)){ alert('A folder cannot be moved into itself.'); return null; }
+  const caseOnly=newPath.toLowerCase()===path.toLowerCase();
+  if(!caseOnly){
+    let taken=false; try{ if(isDir) await dest.handle.getDirectoryHandle(name); else await dest.handle.getFileHandle(name); taken=true; }catch(e){}
+    if(taken){ alert('"'+name+'" already exists in '+(dest.path?dest.path.slice(0,-1):dest.name)+'.'); return null; }
+  }
+  const inside=insideOf(path,isDir), reloc=isDir?relocateDir:relocateFile;
+  vx.busy++;
+  try{
+    for(const d of inside) if(d.dirty&&d.handle) await writeDoc(d).catch(()=>{});
+    let h=src.handle;
+    if(caseOnly){ const tmp=await freeName(dest.handle,'~'+name); h=await reloc(h,from.handle,dest.handle,tmp); }
+    h=await reloc(h,caseOnly?dest.handle:from.handle,dest.handle,name);
+    for(const d of inside){
+      const np=newPath+d.wsPath.slice(path.length);
+      try{ const nh=isDir?await handleAt(np):h; d.handle=nh; d.wsPath=np; d.name=nh.name; d.mtime=(await nh.getFile()).lastModified; idb.set('handles',d.id,nh); }catch(e){ d.wsPath=null; }
+    }
+    for(const [p,e] of [...vx.notes]) if(isDir?p.startsWith(path):p===path){ vx.notes.delete(p); const np=newPath+p.slice(path.length); vx.notes.set(np,Object.assign(e,{path:np,name:np.slice(np.lastIndexOf('/')+1),handle:null})); }
+    if(isDir) for(const p of [...exp]) if(p.startsWith(path)){ exp.delete(p); exp.add(newPath+p.slice(path.length)); }
+    exp.add(destPath); if(fsel===path) fsel=newPath;
+  }catch(e){ console.error(e); if(e.name!=='AbortError') alert('Could not move "'+src.name+'": '+e.message); vx.busy--; requestScan(true,null,0); return null; }
+  vx.busy--;
+  renderTabs(); renderBacklinks(); requestScan(false,null,0); return newPath;
+}
+async function trashEntry(path){
+  const isDir=path.endsWith('/'), src=nodeAt(path), from=vx.dirs.get(parentOf(path)); if(!path||!src||!from||!vx.perm) return;
+  const inside=insideOf(path,isDir), dirty=inside.filter(d=>d.dirty).length;
+  if(!confirm('Move "'+(isDir?src.name:labelOf(src.name))+'"'+(isDir?' and everything in it':'')+' to the .trash folder?'+(dirty?' Unsaved changes in '+dirty+' open tab'+(dirty>1?'s':'')+' will be lost.':''))) return;
+  vx.busy++;
+  try{
+    const trash=await ws.dir.getDirectoryHandle('.trash',{create:true}), name=await freeName(trash,src.name);
+    for(const d of inside) removeDoc(d);
+    await (isDir?relocateDir:relocateFile)(src.handle,from.handle,trash,name);
+    for(const p of [...vx.notes.keys()]) if(isDir?p.startsWith(path):p===path) vx.notes.delete(p);
+    if(isDir) for(const p of [...exp]) if(p.startsWith(path)) exp.delete(p);
+    if(fsel&&(isDir?fsel.startsWith(path):fsel===path)) fsel=null;
+  }catch(e){ console.error(e); alert('Could not delete "'+src.name+'": '+e.message); }
+  vx.busy--;
+  renderBacklinks(); if(agendaOn) renderAgenda(); requestScan(false,null,0);
+}
+async function newNoteIn(node){
+  if(!vx.root) return; node=node||vx.root;
+  const p=await newTab(null,null,null,node); if(p){ renderTree(); selectRow(p); startTreeRename(p); }
+}
+async function newFolderIn(node){
+  if(!vx.root||!vx.perm) return; node=node||vx.root;
+  try{
+    const name=await freeName(node.handle,'New folder'), h=await node.handle.getDirectoryHandle(name,{create:true}), path=node.path+name+'/';
+    const nd={path,name,handle:h,dirs:[],files:[]}; node.dirs.push(nd); node.dirs.sort(byName); vx.dirs.set(path,nd); exp.add(node.path);
+    renderTree(); selectRow(path); startTreeRename(path); requestScan(false,null,2000);
+  }catch(e){ console.error(e); alert('Could not create the folder: '+e.message); }
+}
+
+/* ---------- files pane ---------- */
+function fempty(msg,btn,fn){ const d=el('div','fempty'); d.append(msg); if(btn){ const b=el('button','btn'); b.type='button'; b.textContent=btn; b.addEventListener('click',fn); d.append(el('br'),b); } return d; }
+let treeStale=false;
+function renderTree(){
+  filesEl.hidden=!settings.files; if(filesEl.hidden) return;
+  if(treeEl.querySelector('input.frename')){ treeStale=true; return; }   /* not under a rename in progress */
+  treeStale=false;
+  const ready=!!(ws.dir&&vx.perm&&vx.root); rows.clear();
+  filesEl.classList.toggle('ready',ready); fNameEl.textContent=ws.dir?ws.dir.name:'Files'; fNameEl.title=ws.dir?ws.dir.name:'';
+  if(!ws.dir){ treeEl.replaceChildren(fempty('No folder is open. Notes in a folder show here, and new notes are saved into it.','Open folder…',()=>openVault(null))); return; }
+  if(!vx.perm){ treeEl.replaceChildren(fempty('PowerNotes needs your permission to read "'+ws.dir.name+'" again.','Allow access',()=>grantVault())); return; }
+  if(!vx.root){ treeEl.replaceChildren(fempty('Reading the folder…')); return; }
+  const frag=document.createDocumentFragment(), curPath=D()?D().wsPath:null;
+  const row=(kind,path,name,depth)=>{
+    const r=el('div','fr '+kind); r.dataset.p=path; r.style.setProperty('--d',depth); r.draggable=true; r.setAttribute('role','treeitem');
+    if(kind==='dir'){ const c=el('span','fchev'); c.innerHTML=CHEV; r.append(c); const open=exp.has(path); r.setAttribute('aria-expanded',open); if(open) r.classList.add('open'); }
+    const n=el('span','fn'); n.textContent=kind==='dir'?name:labelOf(name); n.title=name; r.append(n);
+    if(path===curPath) r.classList.add('cur'); if(path===fsel) r.classList.add('sel');
+    rows.set(path,r); return r;
+  };
+  const walk=(node,depth)=>{ for(const d of node.dirs){ frag.append(row('dir',d.path,d.name,depth)); if(exp.has(d.path)) walk(d,depth+1); } for(const f of node.files) frag.append(row('file',f.path,f.name,depth)); };
+  walk(vx.root,0);
+  if(!vx.root.dirs.length&&!vx.root.files.length) frag.append(fempty('No notes in this folder yet. Alt+N makes one.'));
+  treeEl.replaceChildren(frag);
+}
+function filesMarkCur(){ if(filesEl.hidden) return; const p=D()?D().wsPath:null; for(const [k,r] of rows) r.classList.toggle('cur',k===p); }
+function selectRow(p){ fsel=p; for(const [k,r] of rows) r.classList.toggle('sel',k===p); const r=rows.get(p); if(r) r.scrollIntoView({block:'nearest'}); }
+function toggleDir(p){ if(exp.has(p)) exp.delete(p); else exp.add(p); renderTree(); scheduleDraft(); }
+function activateRow(p){ if(isDirPath(p)) toggleDir(p); else { const e=vx.notes.get(p); if(e) openNote(e); } }
+function toggleFiles(){ settings.files=!settings.files; renderTree(); scheduleDraft(); }
+function setFw(w){ settings.fw=Math.max(160,Math.min(600,Math.round(w))); document.documentElement.style.setProperty('--fw',settings.fw+'px'); }
+/* the folder a new note or folder goes into: the selected folder, else the one holding the selected note, else the
+   one holding the current note, else the top */
+function selDir(){
+  if(!vx.root) return null;
+  const p=fsel!=null?fsel:(D()&&D().wsPath)||'';
+  return vx.dirs.get(isDirPath(p)?p:parentOf(p))||vx.root;
+}
+function treeMenu(path){
+  const isDir=path==null||isDirPath(path), node=path==null?vx.root:nodeAt(path), dirNode=isDir?node:vx.dirs.get(parentOf(path)), items=[];
+  if(!node) return [];
+  if(path!=null&&!isDir) items.push({l:'Open',f:()=>openNote(node)});
+  items.push({l:'New note',f:()=>newNoteIn(dirNode)},{l:'New folder',f:()=>newFolderIn(dirNode)});
+  if(path!=null) items.push('-',{l:'Rename',sc:'F2',f:()=>startTreeRename(path)},{l:'Delete',sc:'Del',f:()=>trashEntry(path)});
+  items.push('-',{l:'Collapse all',f:()=>{ exp.clear(); renderTree(); scheduleDraft(); }},{l:'Refresh',f:()=>requestScan(true,null,0)});
+  if(path==null) items.push('-',{l:'Change folder…',f:()=>openVault(null)},{l:'Close folder',f:closeVault});
+  return items;
+}
+function startTreeRename(path){
+  const r=rows.get(path), node=nodeAt(path); if(!r||!node) return;
+  const n=r.querySelector('.fn'), inp=el('input','frename'), ext=isDirPath(path)?'':(NOTE_EXT.exec(node.name)||[''])[0];
+  inp.value=node.name.slice(0,node.name.length-ext.length); inp.spellcheck=false; inp.setAttribute('aria-label','Name');
+  n.replaceWith(inp); r.draggable=false; inp.focus(); inp.select();
+  let done=false;
+  const finish=async ok=>{
+    if(done) return; done=true; const v=inp.value.trim(); inp.replaceWith(n); r.draggable=true;
+    if(treeStale) renderTree();
+    if(ok&&v&&v+ext!==node.name){ const np=await moveEntry(path,parentOf(path),v+ext); if(np){ fsel=np; } }
+    treeEl.focus({preventScroll:true});
+  };
+  inp.addEventListener('blur',()=>finish(true));
+  inp.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ e.preventDefault(); finish(false); } });
+  inp.addEventListener('mousedown',e=>e.stopPropagation());
+}
+treeEl.addEventListener('click',e=>{
+  const r=e.target.closest('.fr'); if(!r||r.querySelector('input')) return;
+  selectRow(r.dataset.p); activateRow(r.dataset.p);
+});
+treeEl.addEventListener('dblclick',e=>{ const r=e.target.closest('.fr'); if(r&&e.target.closest('.fn')) startTreeRename(r.dataset.p); });
+treeEl.addEventListener('contextmenu',e=>{
+  e.preventDefault(); const r=e.target.closest('.fr'); if(r) selectRow(r.dataset.p);
+  const items=treeMenu(r?r.dataset.p:null); if(items.length) showContextMenu(e.clientX,e.clientY,items);
+});
+treeEl.addEventListener('keydown',e=>{
+  if(e.target!==treeEl) return;
+  const list=[...treeEl.querySelectorAll('.fr')]; if(!list.length) return;
+  const k=list.findIndex(r=>r.dataset.p===fsel), go=j=>selectRow(list[Math.max(0,Math.min(j,list.length-1))].dataset.p);
+  if(e.key==='ArrowDown') go(k+1);
+  else if(e.key==='ArrowUp') go(k<0?0:k-1);
+  else if(e.key==='Home') go(0);
+  else if(e.key==='End') go(list.length-1);
+  else if(e.key==='ArrowRight'&&fsel!=null){ if(isDirPath(fsel)&&!exp.has(fsel)) toggleDir(fsel); else go(k+1); }
+  else if(e.key==='ArrowLeft'&&fsel!=null){ if(isDirPath(fsel)&&exp.has(fsel)) toggleDir(fsel); else if(parentOf(fsel)) selectRow(parentOf(fsel)); }
+  else if((e.key==='Enter'||e.key===' ')&&fsel!=null) activateRow(fsel);
+  else if(e.key==='F2'&&fsel!=null) startTreeRename(fsel);
+  else if(e.key==='Delete'&&fsel!=null) trashEntry(fsel);
+  else if(e.key==='Escape'){ if(lastSel&&!sourceOn&&!agendaOn) setSel(lastSel.a,lastSel.f); else editor.focus(); }
+  else return;
+  e.preventDefault(); e.stopPropagation();
+});
+$('fNew').addEventListener('click',()=>newNoteIn(selDir()));
+$('fNewDir').addEventListener('click',()=>newFolderIn(selDir()));
+$('fFold').addEventListener('click',()=>{ exp.clear(); renderTree(); scheduleDraft(); });
+$('fResize').addEventListener('mousedown',e=>{
+  e.preventDefault(); const x0=e.clientX, w0=settings.fw;
+  const mv=ev=>setFw(w0+ev.clientX-x0), up=()=>{ removeEventListener('mousemove',mv); removeEventListener('mouseup',up); scheduleDraft(); };
+  addEventListener('mousemove',mv); addEventListener('mouseup',up);
+});
+/* dragging a note or folder onto a folder row (or onto the pane's empty space, for the top) moves it there */
+let treeDrag=null, treeDrop=null;
+function dropDirOf(e){ const r=e.target.closest('.fr'); if(!r) return ''; const p=r.dataset.p; return isDirPath(p)?p:parentOf(p); }
+function clearTreeDrop(){ if(treeDrop){ treeDrop.classList.remove('drop'); treeDrop=null; } }
+function endTreeDrag(){ treeDrag=null; clearTreeDrop(); treeEl.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging')); }
+treeEl.addEventListener('dragstart',e=>{
+  const r=e.target.closest('.fr'); if(!r||!r.dataset.p||r.querySelector('input')){ e.preventDefault(); return; }
+  treeDrag=r.dataset.p; e.dataTransfer.setData('text/plain',treeDrag); e.dataTransfer.effectAllowed='move'; r.classList.add('dragging');
+});
+treeEl.addEventListener('dragover',e=>{
+  if(treeDrag==null) return; e.preventDefault(); const dest=dropDirOf(e); clearTreeDrop();
+  const ok=dest!==parentOf(treeDrag)&&!(treeDrag.endsWith('/')&&dest.startsWith(treeDrag));
+  e.dataTransfer.dropEffect=ok?'move':'none'; if(!ok) return;
+  treeDrop=dest?rows.get(dest):treeEl; if(treeDrop) treeDrop.classList.add('drop');
+});
+treeEl.addEventListener('dragleave',e=>{ if(!treeEl.contains(e.relatedTarget)) clearTreeDrop(); });
+treeEl.addEventListener('drop',async e=>{
+  if(treeDrag==null) return; e.preventDefault(); const dest=dropDirOf(e), src=treeDrag; endTreeDrag();
+  if(dest===parentOf(src)||(src.endsWith('/')&&dest.startsWith(src))) return;
+  const np=await moveEntry(src,dest); if(np) fsel=np;
+});
+treeEl.addEventListener('dragend',endTreeDrag);
+
+/* ---------- workspaces: the folder plus the tabs that were open, or a chosen set of files from anywhere ----------
+   A workspace is remembered in IndexedDB as the folder handle, the paths of the tabs open from it, and the file
+   handles of the tabs that came from elsewhere. */
 async function refreshWorkspaces(){
   const v=await idb.all('workspaces'), k=await idb.keys('workspaces');
   workspaces=(v||[]).map((w,i)=>Object.assign({key:k[i]},w)).filter(w=>w&&w.name).sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
   if(ws.key&&!workspaces.some(w=>w.key===ws.key)) ws.key=null;
 }
-/* every note in dir and its subfolders (hidden folders skipped), files before subfolders, as {path,handle} */
-async function walkDir(dir,out,prefix,depth){
-  if(depth>8||out.length>WS_MAX) return;
-  const files=[], dirs=[]; try{ for await(const h of dir.values()){ if(h.kind==='file'){ if(NOTE_EXT.test(h.name)) files.push(h); } else if(h.kind==='directory'&&!SKIP_DIR.test(h.name)) dirs.push(h); } }catch(e){ return; }
-  const byName=(a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'});
-  for(const h of files.sort(byName)) out.push({path:prefix+h.name,handle:h});
-  for(const h of dirs.sort(byName)) await walkDir(h,out,prefix+h.name+'/',depth+1);
-}
-async function folderNotes(dir){ const out=[]; await walkDir(dir,out,'',0); return out; }
 /* like ensurePerm, but when the browser wants a fresh click before it will show its prompt (one prompt per click),
    a small dialog supplies one. true, false, or null when the user cancelled outright */
 async function grantHandle(h,mode,what){
   try{ if((await h.queryPermission({mode}))==='granted') return true; }catch(e){ return false; }
   let r=null; try{ r=await h.requestPermission({mode}); }catch(e){}
   if(r==='granted') return true; if(r==='denied') return false;
-  const a=await askAccess({title:'Allow access to '+h.name,msg:'PowerNotes needs your permission to open '+(what||'"'+h.name+'"')+' from the workspace.',ok:'Allow access',alt:'Skip it'});
+  const a=await askAccess({title:'Allow access to '+h.name,msg:'PowerNotes needs your permission to open '+(what||'"'+h.name+'"')+'.',ok:'Allow access',alt:'Skip it'});
   if(a!=='ok') return a==='alt'?false:null;
   try{ return (await h.requestPermission({mode}))==='granted'; }catch(e){ return false; }
 }
-/* takes handles or {path,handle} entries from folderNotes; the path says where the file sits in the workspace folder */
+/* takes handles or {path,handle} entries; the path says where the file sits in the folder */
 async function readHandles(list){
   const items=[], failed=[];
   for(const n of list){ const h=n.handle||n; try{ const f=await h.getFile(); items.push({name:f.name,text:await f.text(),handle:h,path:n.handle?n.path:undefined,mtime:f.lastModified}); }catch(e){ failed.push(h.name); } }
@@ -1994,48 +2478,17 @@ async function addDocs(items,quiet=true){
   }
   if(docs.length>1){ const k=docs.findIndex(isBlank); if(k>=0){ idb.del('handles',docs[k].id); docs.splice(k,1); if(first>k) first--; } }
   cur=Math.max(0,Math.min(first,docs.length-1)); loadDocState(); setSel({i:0,off:0}); scheduleDraft();
+  if(ws.dir&&vx.perm) requestScan(false,null,0);
 }
-function setWs(key,name,dir){
-  ws={key,name,dir:dir||null}; for(const d of docs) d.wsPath=undefined;
-  if(dir){ idb.set('handles','wsdir',dir); folder=dir; folderListed=false; idb.set('handles','folder',dir); rememberDir(dir); listFolder(); }
-  else idb.del('handles','wsdir');
-  renderTabs(); scheduleDraft(); syncStart();
-}
-/* opens every note in a folder as tabs and makes it the notes folder. Without a handle the folder picker is shown,
-   or, where the browser has none, a plain folder input (the files then open without handles, so Save asks where) */
-async function openFolderWorkspace(dir){
-  if(!dir){
-    if(!window.showDirectoryPicker){ dirInput.value=''; dirInput.click(); return; }
-    try{ dir=await showDirectoryPicker({mode:'readwrite'}); }catch(e){ if(e.name!=='AbortError') console.error(e); return; }
-  } else if(!(await grantHandle(dir,'readwrite','the folder "'+dir.name+'"'))) return;
-  const notes=await folderNotes(dir);
-  if(!(await confirmMany(notes.length,dir.name))) return;
-  const {items,failed}=await readHandles(notes.slice(0,WS_MAX));
-  closeCleanTabs(); setWs(null,dir.name,dir); await addDocs(items);
-  if(failed.length) alert('Could not read '+failed.join(', ')+'.');
-}
-async function confirmMany(n,name){
-  if(n>WS_MAX) return confirm(name+' holds '+n+' notes. Open the first '+WS_MAX+' of them as tabs?');
-  return n<=40||confirm('Open all '+n+' notes in '+name+' as tabs?');
-}
-dirInput.addEventListener('change',async()=>{
-  const ok=f=>NOTE_EXT.test(f.name)&&!/(^|\/)(\.[^/]*|node_modules)\//.test(f.webkitRelativePath||'');
-  const files=[...dirInput.files].filter(ok).sort((a,b)=>a.webkitRelativePath.localeCompare(b.webkitRelativePath,undefined,{numeric:true,sensitivity:'base'}));
-  const root=files.length?files[0].webkitRelativePath.split('/')[0]:'';
-  if(!files.length){ alert('No notes (.md, .markdown or .txt files) in that folder.'); return; }
-  if(!(await confirmMany(files.length,root))) return;
-  const items=[]; for(const f of files.slice(0,WS_MAX)) items.push({name:f.name,text:await f.text(),handle:null});
-  closeCleanTabs(); setWs(null,root,null); await addDocs(items);
-});
-/* the tabs that are files on disk, in tab order, leaving out those inside dir since the folder supplies them itself */
+/* the tabs that are files on disk, in tab order, leaving out those inside dir since their paths are kept instead */
 async function wsFiles(dir){
   const out=[];
   for(const d of docs){ if(!d.handle) continue; let inDir=false; if(dir){ try{ inDir=!!(await dir.resolve(d.handle)); }catch(e){} } if(!inDir) out.push(d.handle); }
   return out;
 }
 async function saveWorkspace(as){
-  const dir=ws.dir, files=await wsFiles(dir), loose=docs.filter(d=>!d.handle&&!isBlank(d));
-  if(!dir&&!files.length){ alert('Nothing to put in a workspace yet: open some files, or save this tab to disk, first.'); return; }
+  const dir=ws.dir, files=await wsFiles(dir), paths=docs.filter(d=>d.wsPath).map(d=>d.wsPath), loose=docs.filter(d=>!d.handle&&!isBlank(d));
+  if(!dir&&!files.length){ alert('Nothing to put in a workspace yet: open a folder or some files, or save this tab to disk, first.'); return; }
   if(loose.length){
     const many=loose.length>1, them=many?'them':'it';
     const a=await askAccess({title:'Some tabs are not files yet',msg:'"'+loose[0].name+'"'+(many?' and '+(loose.length-1)+' more':'')+' ha'+(many?'ve':'s')+' never been saved to disk, so the workspace cannot bring '+them+' back. Save with Ctrl+S first to keep '+them+'.',ok:'Save workspace anyway'});
@@ -2047,16 +2500,17 @@ async function saveWorkspace(as){
     await refreshWorkspaces(); const dup=workspaces.find(w=>w.name.toLowerCase()===name.toLowerCase());
     if(dup){ if(dup.key!==ws.key&&!confirm('A workspace called "'+dup.name+'" already exists. Replace it?')) return; key=dup.key; } else key=uid();
   }
-  await idb.set('workspaces',key,{name,dir:dir||null,files,curName:D().name,t:Date.now()});
-  await refreshWorkspaces(); setWs(key,name,dir);
+  await idb.set('workspaces',key,{name,dir:dir||null,files,paths,curName:D().name,t:Date.now()});
+  await refreshWorkspaces(); ws.key=key; ws.name=name; renderTabs(); scheduleDraft();
 }
 async function openWorkspace(w){
-  let handles=[];
-  if(w.dir){ if(!(await grantHandle(w.dir,'readwrite','the folder "'+w.dir.name+'"'))) return; handles=(await folderNotes(w.dir)).slice(0,WS_MAX); }
-  const skipped=[];
+  if(w.dir&&!(await grantHandle(w.dir,'readwrite','the folder "'+w.dir.name+'"'))) return;
+  const handles=[], skipped=[];
   for(const h of w.files||[]){ const g=await grantHandle(h,'read'); if(g===null) return; if(g) handles.push(h); else skipped.push(h.name); }
   const {items,failed}=await readHandles(handles);
-  closeCleanTabs(); setWs(w.key,w.name,w.dir||null); await addDocs(items);
+  closeCleanTabs(); setWs(w.key,w.name,w.dir||null);
+  if(w.dir) for(const p of w.paths||[]){ try{ const h=await handleAt(p), f=await h.getFile(); items.push({name:f.name,text:await f.text(),handle:h,path:p,mtime:f.lastModified}); }catch(e){ failed.push(p); } }
+  if(items.length) await addDocs(items);
   if(w.curName){ const k=docs.findIndex(d=>d.name===w.curName); if(k>=0) switchTab(k); }
   const gone=failed.concat(skipped);
   if(gone.length) alert('Not opened: '+gone.join(', ')+'.'+(failed.length?' Files may have been moved or deleted.':''));
@@ -2065,129 +2519,19 @@ async function deleteWorkspace(w){
   if(!confirm('Forget the workspace "'+w.name+'"? Its files stay on disk.')) return;
   await idb.del('workspaces',w.key); await refreshWorkspaces(); renderTabs(); scheduleDraft();
 }
-function closeWorkspace(){ closeCleanTabs(); setWs(null,'',null); }
 function workspaceMenu(){
   const items=[];
   if(ws.name) items.push({h:'Workspace: '+ws.name+(ws.key?'':' (not saved)')});
-  items.push({l:'Open folder as workspace…',f:()=>openFolderWorkspace(null)});
   if(ws.key) items.push({l:'Save workspace',f:()=>saveWorkspace(false)});
-  items.push({l:ws.key?'Save workspace as…':'Save workspace…',f:()=>saveWorkspace(true)});
+  items.push({l:ws.key?'Save workspace as…':'Save as workspace…',f:()=>saveWorkspace(true)});
   if(workspaces.length){
     items.push('-',{h:'Saved workspaces'},...workspaces.slice(0,12).map(w=>({l:w.name,chk:w.key===ws.key,f:()=>openWorkspace(w)})));
     if(workspaces.length>12) items.push({l:'…and '+(workspaces.length-12)+' more',dis:true});
     items.push('-',{l:'Forget workspace',sub:()=>workspaces.map(w=>({l:w.name,f:()=>deleteWorkspace(w)}))});
   } else items.push('-');
-  items.push({l:'Close workspace',f:closeWorkspace,dis:!ws.name});
+  items.push({l:'Close workspace',f:closeVault,dis:!ws.name});
   return items;
 }
-
-/* ---------- folder workspace sync ----------
-   Like Obsidian: a new tab in a folder workspace is a file in the folder from the start, edits are written to it as you
-   type, and notes created, changed or removed in the folder by anything else show up in the tabs. Browsers have no
-   file watcher, so the folder is re-read every few seconds while the page is visible, at once when the window gets
-   focus, and on the spot where the browser has FileSystemObserver. */
-let syncTimer=0, syncBusy=false, observer=null, autoTimer=0, autoBusy=false;
-const OBS=typeof FileSystemObserver==='function';
-function syncStart(){
-  syncStop(); if(!ws.dir||!settings.sync) return;
-  if(OBS){ try{ observer=new FileSystemObserver(()=>syncSoon(300)); observer.observe(ws.dir,{recursive:true}).catch(()=>{ observer=null; }); }catch(e){ observer=null; } }
-  syncSoon(500);
-}
-function syncStop(){ clearTimeout(syncTimer); syncTimer=0; if(observer){ try{ observer.disconnect(); }catch(e){} observer=null; } }
-function syncSoon(ms){ if(!ws.dir||!settings.sync) return; clearTimeout(syncTimer); syncTimer=setTimeout(syncFolder,ms); }
-async function pathIn(dir,h){ try{ const p=await dir.resolve(h); return p?p.join('/'):null; }catch(e){ return null; } }
-async function syncFolder(){
-  syncTimer=0; if(!ws.dir||!settings.sync) return;
-  if(syncBusy||document.hidden){ syncSoon(4000); return; }
-  syncBusy=true; const dir=ws.dir;
-  try{
-    if((await dir.queryPermission({mode:'readwrite'}))==='granted'){
-      const notes=await folderNotes(dir), seen=new Set(notes.map(n=>n.path));
-      for(const d of docs) if(d.handle&&d.wsPath===undefined) d.wsPath=await pathIn(dir,d.handle);
-      /* gone from the folder: the tab goes too, unless it holds unsaved changes */
-      for(const d of docs.slice()) if(d.wsPath&&!seen.has(d.wsPath)&&!d.dirty) removeDoc(d);
-      /* new in the folder: a tab at the end, without switching to it */
-      const items=[];
-      for(const n of notes){
-        if(docs.some(d=>d.wsPath===n.path)) continue;
-        let open=false; for(const d of docs) if(d.handle&&await sameFile(d.handle,n.handle)){ d.wsPath=n.path; open=true; break; }
-        if(open) continue;
-        try{ const f=await n.handle.getFile(); items.push({name:f.name,text:await f.text(),handle:n.handle,path:n.path,mtime:f.lastModified}); }catch(e){}
-      }
-      if(items.length) appendDocs(items);
-      /* changed on disk: reloaded, unless the tab holds unsaved changes */
-      for(const d of docs){
-        if(!d.wsPath||d.dirty||!d.handle) continue;
-        let f=null; try{ f=await d.handle.getFile(); }catch(e){ continue; }
-        if(d.mtime==null){ d.mtime=f.lastModified; continue; }
-        if(f.lastModified!==d.mtime&&!d.dirty){ d.mtime=f.lastModified; reloadDoc(d,await f.text()); }
-      }
-    }
-  }catch(e){ console.warn('folder sync',e); }
-  finally{ syncBusy=false; if(ws.dir===dir) syncSoon(observer?20000:4000); }
-}
-function removeDoc(d){
-  const k=docs.indexOf(d); if(k<0) return;
-  if(k===cur){ if(sourceOn) setSource(false); if(agendaOn) setAgenda(false); saveDocState(); }
-  idb.del('handles',d.id); docs.splice(k,1); if(!docs.length) docs.push(newDoc());
-  if(k<cur) cur--; else if(k===cur){ cur=Math.min(k,docs.length-1); loadDocState(); }
-  renderTabs(); renderBacklinks(); scheduleDraft();
-}
-function appendDocs(items){
-  for(const it of items){ const d=newDoc(it.name,it.text); d.handle=it.handle; d.indentUnit=detectIndent(d.lines); d.wsPath=it.path; d.mtime=it.mtime; idb.set('handles',d.id,it.handle); docs.push(d); }
-  renderTabs(); renderBacklinks(); scheduleDraft();
-}
-function reloadDoc(d,text){
-  if(d===D()){
-    setLines(fromText(text,true)); indentUnit=detectIndent(lines);
-    if(sourceOn) src.value=serialize(); else { render(); if(lastSel) lastSel=mkSel(clampPos(lastSel.a),clampPos(lastSel.f)); restoreSel(); }
-  } else { d.lines=fromTextRaw(text); d.indentUnit=detectIndent(d.lines); d.sel=null; }
-  renderBacklinks(); scheduleDraft();
-}
-/* a new tab becomes Untitled.md (or Untitled 2.md, …, or its own name if it was renamed first) in the workspace folder */
-async function createInFolder(d){
-  const dir=ws.dir; if(!dir||d.handle||!settings.sync) return;
-  try{
-    if(!(await ensurePerm(dir,'readwrite'))) return;
-    const taken=new Set(); for await(const nm of dir.keys()) taken.add(nm.toLowerCase());
-    const base=(d.name||'Untitled.md').replace(NOTE_EXT,''), ext=(NOTE_EXT.exec(d.name||'')||['.md'])[0];
-    let name=base+ext, n=1; while(taken.has(name.toLowerCase())) name=base+' '+(++n)+ext;
-    if(d.handle||!docs.includes(d)) return;
-    const text=serializeLines(d.lines), h=await dir.getFileHandle(name,{create:true}), w=await h.createWritable(); await w.write(text); await w.close();
-    d.handle=h; d.name=name; d.wsPath=name; d.mtime=(await h.getFile()).lastModified; d.created=true;
-    if(serializeLines(d.lines)===text) d.dirty=false; else scheduleAutosave();
-    idb.set('handles',d.id,h); renderTabs(); renderBacklinks(); listFolder(); scheduleDraft();
-  }catch(e){ console.warn('create note',e); }
-}
-/* an auto-created note that is still empty and still called Untitled is removed from the folder when its tab closes */
-async function discardEmpty(d){
-  if(!d.created||!d.handle||!ws.dir||!/^Untitled( \d+)?\.(md|markdown|txt)$/i.test(d.name)||serializeLines(d.lines).trim()) return;
-  try{ const p=await ws.dir.resolve(d.handle); if(!p||p.length!==1) return; if(!(await (await d.handle.getFile()).text()).trim()){ await ws.dir.removeEntry(p[0]); listFolder(); } }catch(e){}
-}
-/* edits to files in the workspace folder are written about a second after the last keystroke */
-function scheduleAutosave(){ if(!settings.autosave||!ws.dir) return; clearTimeout(autoTimer); autoTimer=setTimeout(autosave,1000); }
-async function autosave(){
-  autoTimer=0; if(!settings.autosave||!ws.dir) return;
-  if(autoBusy||composing){ scheduleAutosave(); return; }
-  autoBusy=true; let changed=false;
-  try{
-    for(const d of docs){
-      if(!d.dirty||!d.handle) continue;
-      if(d.wsPath===undefined) d.wsPath=await pathIn(ws.dir,d.handle);
-      if(!d.wsPath) continue;
-      try{
-        if((await d.handle.queryPermission({mode:'readwrite'}))!=='granted') continue;
-        if(d===D()&&sourceOn) syncFromSource();
-        const text=serializeLines(d.lines), w=await d.handle.createWritable(); await w.write(text); await w.close();
-        d.mtime=(await d.handle.getFile()).lastModified;
-        if(serializeLines(d.lines)===text){ d.dirty=false; changed=true; } else scheduleAutosave();
-      }catch(e){ console.warn('autosave',e); }
-    }
-  } finally{ autoBusy=false; }
-  if(changed){ renderTabs(); scheduleDraft(); }
-}
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncSoon(200); });
-window.addEventListener('focus',()=>syncSoon(200));
 
 /* ---------- menus ---------- */
 function withSel(fn){ const s=lastSel||mkSel({i:0,off:0},{i:0,off:0}); if(document.activeElement!==editor) setSel(s.a,s.f); fn(getSel()||s); }
@@ -2223,19 +2567,20 @@ const cmd={
 };
 const menus={
   file:()=>[
-    {l:'New tab',sc:'Alt+N',f:()=>newTab()},
+    {l:'New note',sc:'Alt+N',f:()=>newTab()},
+    ...(vx.root?[{l:'New folder',f:()=>newFolderIn(vx.root)}]:[]),
     {l:'Open…',sc:'Ctrl+O',f:openFile},
     ...(recent.length?[{h:'Recent files'},...recent.slice(0,8).map(r=>({l:r.name,f:()=>openRecent(r)}))]:[]),
+    '-',
+    ...(ws.dir?[{h:'Folder: '+ws.dir.name},{l:'Change folder…',f:()=>openVault(null)},{l:'Close folder',f:closeVault}]:[{l:'Open folder…',f:()=>openVault(null)}]),
     {l:'Workspace',sub:workspaceMenu},
     '-',
     {l:'Save',sc:'Ctrl+S',f:()=>saveFile(false)},
     {l:'Save as…',sc:'Ctrl+Shift+S',f:()=>saveFile(true)},
-    {l:'Rename tab',f:()=>startRename(cur)},
+    {l:'Rename note',f:()=>startRename(cur)},
     '-',
     {l:'Export as HTML…',f:exportHtml},
     {l:'Print / save as PDF…',sc:'Ctrl+P',f:()=>window.print()},
-    '-',
-    ...folderMenu(),
     '-',
     {h:'Tabs'},
     {l:'Next tab',sc:'Ctrl+Tab',f:()=>cycleTab(1),dis:docs.length<2},
@@ -2265,6 +2610,7 @@ const menus={
     {l:'Command palette…',sc:'Ctrl+Shift+P',f:openPalette},
     {l:'Agenda: dated open items from every tab',sc:'Ctrl+Shift+A',chk:agendaOn,f:()=>setAgenda(!agendaOn)},
     '-',
+    {l:'Files',sc:'Ctrl+Shift+E',chk:settings.files,f:toggleFiles},
     {l:'Outline',sc:'Ctrl+Shift+O',chk:settings.outline,f:viewToggle('outline')},
     {l:'Indented headings',chk:settings.indentHeadings,f:viewToggle('indentHeadings')},
     {l:'Source',chk:sourceOn,f:()=>setSource(!sourceOn)},
@@ -2341,9 +2687,9 @@ function showMenu(name,btn,focusFirst){
   box.style.left=btn.offsetLeft+'px'; menubar.append(box); btn.classList.add('open'); openMenu={name,btn,box,sub:null};
   if(focusFirst) focusItem(box,0);
 }
-function showContextMenu(x,y){
+function showContextMenu(x,y,items){
   hideMenu(); acHide(); closeDatePop(false); hidePreview();
-  const box=buildMenu(menus.context(),false); box.classList.add('ctx'); document.body.append(box); placeFixed(box,x,y);
+  const box=buildMenu(items||menus.context(),false); box.classList.add('ctx'); document.body.append(box); placeFixed(box,x,y);
   openMenu={name:'context',btn:null,box,sub:null};
 }
 function hideMenu(){ if(!openMenu) return; closeSub(); openMenu.box.remove(); if(openMenu.btn) openMenu.btn.classList.remove('open'); openMenu=null; }
@@ -2424,6 +2770,7 @@ document.addEventListener('keydown',e=>{
   if(k==='s'){ e.preventDefault(); saveFile(e.shiftKey); }
   else if(k==='o'&&!e.shiftKey){ e.preventDefault(); openFile(); }
   else if(k==='o'&&e.shiftKey){ e.preventDefault(); viewToggle('outline')(); }
+  else if(k==='e'&&e.shiftKey){ e.preventDefault(); toggleFiles(); }
   else if(k==='p'&&!e.shiftKey){ e.preventDefault(); window.print(); }
   else if(k==='p'&&e.shiftKey){ e.preventDefault(); if(pal.open) closePalette(true); else openPalette(); }
   else if(k==='a'&&e.shiftKey){ e.preventDefault(); setAgenda(!agendaOn); }
@@ -2459,10 +2806,10 @@ async function saveFile(as){
   if(window.showSaveFilePicker){
     try{
       if(d.handle&&!as&&!(await ensurePerm(d.handle,'readwrite'))) as=true;
-      if(!d.handle&&!as&&folder){ const r=await saveToFolder(d,text); if(r===null) return; if(r){ d.dirty=false; renderTabs(); scheduleDraft(); return; } }
-      if(!d.handle||as){ d.handle=await showSaveFilePicker({suggestedName:d.name,types:TYPES}); d.name=d.handle.name; idb.set('handles',d.id,d.handle); addRecent(d.handle,d.name); }
-      const w=await d.handle.createWritable(); await w.write(text); await w.close();
-      d.dirty=false; renderTabs(); scheduleDraft();
+      if(!d.handle&&!as&&ws.dir){ const r=await saveToVault(d,text); if(r===null) return; if(r){ d.dirty=false; renderTabs(); scheduleDraft(); return; } }
+      if(!d.handle||as){ d.handle=await showSaveFilePicker({suggestedName:d.name,types:TYPES}); d.name=d.handle.name; d.wsPath=undefined; idb.set('handles',d.id,d.handle); addRecent(d.handle,d.name); }
+      await writeDoc(d); renderTabs(); scheduleDraft();
+      if(ws.dir&&vx.perm) requestScan(false,null,0);
     }catch(e){ if(e.name!=='AbortError'){ console.error(e); alert('Could not save: '+e.message); } }
   } else {
     download(d.name,text,'text/markdown'); d.dirty=false; renderTabs(); scheduleDraft();
@@ -2480,7 +2827,7 @@ document.addEventListener('drop',async e=>{
   const items=[];
   for(let k=0;k<files.length;k++){
     const h=hps[k]?await hps[k]:null;
-    if(h&&h.kind==='directory'){ await openFolderWorkspace(h); continue; }
+    if(h&&h.kind==='directory'){ await openVault(h); continue; }
     items.push({name:files[k].name,text:await files[k].text(),handle:h&&h.kind==='file'?h:null});
   }
   if(items.length===1) await openInto(items[0].text,items[0].name,items[0].handle);
@@ -2516,7 +2863,7 @@ function exportHtml(){ download(D().name.replace(/\.md$/i,'')+'.html',docToHtml(
 /* ---------- persistence and init ---------- */
 function scheduleDraft(){ clearTimeout(draftTimer); draftTimer=setTimeout(saveDraft,300); }
 function saveDraft(){
-  try{ localStorage.setItem(KEY,JSON.stringify({cur,settings,ws:{key:ws.key,name:ws.name},
+  try{ localStorage.setItem(KEY,JSON.stringify({cur,settings,ws:{key:ws.key,name:ws.name,exp:[...exp]},
     docs:docs.map(d=>({id:d.id,name:d.name,text:serializeLines(d.lines),collapsed:d.lines.map((l,i)=>l.collapsed?i:-1).filter(i=>i>=0),dirty:d.dirty,created:d.created||undefined}))})); }catch(e){}
 }
 function loadDraft(){
@@ -2532,7 +2879,7 @@ function loadDraft(){
     if(!['any','1','2','3'].includes(f.pri)) f.pri='any';
     if(st.today===true){ f.on=true; f.status='open'; f.due='due'; }
     settings.filter=f;
-    if(s.ws&&typeof s.ws==='object'){ ws.key=typeof s.ws.key==='string'?s.ws.key:null; ws.name=typeof s.ws.name==='string'?s.ws.name:''; }
+    if(s.ws&&typeof s.ws==='object'){ ws.key=typeof s.ws.key==='string'?s.ws.key:null; ws.name=typeof s.ws.name==='string'?s.ws.name:''; if(Array.isArray(s.ws.exp)) exp=new Set(s.ws.exp.filter(p=>typeof p==='string')); }
     return true;
   }catch(e){ return false; }
 }
@@ -2543,11 +2890,11 @@ async function init(){
     else docs=[newDoc('Welcome.md',WELCOME)];
     cur=0;
   }
-  applySettings(); setZoom(settings.zoom); loadDocState();
-  for(const d of docs){ idb.get('handles',d.id).then(h=>{ if(h) d.handle=h; }); }
-  idb.get('handles','folder').then(async h=>{ if(!h) return; folder=h; try{ if((await h.queryPermission({mode:'readwrite'}))==='granted') await listFolder(); }catch(e){} });
-  loadRecent();
-  idb.get('handles','wsdir').then(h=>{ if(h&&ws.name){ ws.dir=h; syncStart(); } });
+  applySettings(); setZoom(settings.zoom); setFw(settings.fw); renderTree(); loadDocState();
+  /* the tabs' file handles come first, so the folder scan can tell which tabs are its notes */
+  await Promise.all(docs.map(d=>idb.get('handles',d.id).then(h=>{ if(h) d.handle=h; })));
+  loadRecent(); idb.del('handles','wsdir');
+  await restoreVault();
   refreshWorkspaces().then(renderTabs);
 }
 init();
